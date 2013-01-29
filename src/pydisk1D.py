@@ -5,7 +5,7 @@ import h5py
 import re
 import glob
 import os
-from uTILities import parse_nml, dlydlx, write_nml
+from uTILities import parse_nml, dlydlx, write_nml, progress_bar
 from constants import AU,year, k_b, m_p, mu, Grav
 from matplotlib.mlab import find
 from scipy.interpolate import RectBivariateSpline
@@ -153,10 +153,13 @@ class pydisk1D:
         #
         # make the images
         #
+        fig=figure()
         for i,i_s in enumerate(arange(i0,i1+1,steps)):
-            self.plot_sigma_d(i_s)
+            self.plot_sigma_d(i_s,fig=fig)
             savefig('movie_images/img_%3.3i.png'%i)
-            close(gcf())
+            clf()
+            progress_bar(float(i_s-i0)/float(i1+1-i0)*100., 'making images')
+        close(fig)
         #
         # make the movie
         #
@@ -165,7 +168,7 @@ class pydisk1D:
         moviename = os.path.basename(moviename)+'.mp4'
         ret=subprocess.call(['ffmpeg','-i','movie_images/img_%03d.png','-r','10','-b','512k',moviename]);
         if ret==0:
-            print "Movie created, cleaining up ..."
+            print "Movie created, cleaning up ..."
             for i,i_s in enumerate(arange(i0,i1+1,steps)):
                 os.remove('movie_images/img_%3.3i.png'%i)
             os.removedirs('movie_images')
@@ -501,7 +504,7 @@ class pydisk1D:
                            ylim=[self.grainsizes[0],self.grainsizes[-1]],
                            zlim=[1e-10,1e1],xlabel='r [AU]',ylabel='grain size [cm]')
 
-    def plot_sigma_d(self,N=0,sizelimits=True,cm=cm.hot,plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w'):
+    def plot_sigma_d(self,N=0,sizelimits=True,cm=cm.hot,plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w',fig=None):
         """
         Produces a plot of the dust surface density at snapshot number N.
         
@@ -546,7 +549,9 @@ class pydisk1D:
             a_dr  = fudge_dr/(self.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*self.x**2.*(Grav*self.m_star[N]/self.x**3)/(abs(gamma)*(k_b*self.T[N]/mu/m_p))
             NN     = 0.5
             a_df  = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*self.nml['V_FRAG']*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*k_b*self.T[N]/mu/m_p*(1.-NN)) #@UnusedVariable
-        figure()
+        if fig==None:
+            fig=figure()
+        figure(fig.number)
         #
         # draw the data
         #
