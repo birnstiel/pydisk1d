@@ -504,7 +504,7 @@ class pydisk1D:
                            ylim=[self.grainsizes[0],self.grainsizes[-1]],
                            zlim=[1e-10,1e1],xlabel='r [AU]',ylabel='grain size [cm]')
 
-    def plot_sigma_d(self,N=0,sizelimits=True,cm=cm.hot,plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w',fig=None):
+    def plot_sigma_d(self,N=0,sizelimits=True,cm=cm.hot,plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w',fig=None,contour_lines=False):
         """
         Produces a plot of the dust surface density at snapshot number N.
         
@@ -606,7 +606,7 @@ class pydisk1D:
         #
         # now draw the contour lines
         #
-        if plot_style=='c':
+        if plot_style=='c' and contour_lines:
             contour(self.x/1.4e13,self.grainsizes,log10(1e-10+self.sigma_d[N*self.n_m+arange(0,self.n_m),:]),
                          clevel[1:],colors='k',linestyles="-")
         #
@@ -670,7 +670,11 @@ class pydisk1D:
             #
             varname = filename.replace('.dat','');
             fid=open(infile)
-            setattr(self,varname,array(fid.read().strip().split(),dtype='float'))
+            try:
+                setattr(self,varname,array(fid.read().strip().split(),dtype='float'))
+            except:
+                print('ERROR: unable to read data for varialbe `%s`'%varname)
+                raise Exception('unable to read in variable')
         #
         # now read the name list if it exists
         #
