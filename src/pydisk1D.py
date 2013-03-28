@@ -669,12 +669,12 @@ class pydisk1D:
             # read data and set variable name
             #
             varname = filename.replace('.dat','');
-            fid=open(infile)
-            try:
-                setattr(self,varname,array(fid.read().strip().split(),dtype='float'))
-            except:
-                print('ERROR: unable to read data for varialbe `%s`'%varname)
-                raise Exception('unable to read in variable')
+            with open(infile) as fid:
+                try:
+                    setattr(self,varname,array(fid.read().strip().split(),dtype='float'))
+                except:
+                    print('ERROR: unable to read data for varialbe `%s`'%varname)
+                    #raise Exception('unable to read in variable')
         #
         # now read the name list if it exists
         #
@@ -693,16 +693,16 @@ class pydisk1D:
         n_r = self.n_r
         n_m = self.n_m
         n_t = self.n_t
-        self.alpha      = self.alpha.reshape(-1,n_r)
-        self.alpha_dead = self.alpha_dead.reshape(-1,n_r)
-        self.nu         = self.nu.reshape(n_t,n_r)
-        self.sigma_dead = self.sigma_dead.reshape(-1,n_r)
-        self.sigma_g    = self.sigma_g.reshape(-1,n_r)
-        self.sigma_d    = self.sigma_d.reshape(n_t*n_m,n_r)
-        self.T          = self.T.reshape(n_t,n_r)
-        self.v_gas      = self.v_gas.reshape(n_t,n_r)
-        self.v_gas_dead = self.v_gas_dead.reshape(n_t,n_r)
-        self.v_dust     = self.v_dust.reshape(n_t*n_m,n_r)
+        if self.alpha      !=None: self.alpha      = self.alpha.reshape(-1,n_r)
+        if self.alpha_dead !=None: self.alpha_dead = self.alpha_dead.reshape(-1,n_r)
+        if self.nu         !=None: self.nu         = self.nu.reshape(n_t,n_r)
+        if self.sigma_dead !=None: self.sigma_dead = self.sigma_dead.reshape(-1,n_r)
+        if self.sigma_g    !=None: self.sigma_g    = self.sigma_g.reshape(-1,n_r)
+        if self.sigma_d    !=None: self.sigma_d    = self.sigma_d.reshape(n_t*n_m,n_r)
+        if self.T          !=None: self.T          = self.T.reshape(n_t,n_r)
+        if self.v_gas      !=None: self.v_gas      = self.v_gas.reshape(n_t,n_r)
+        if self.v_gas_dead !=None: self.v_gas_dead = self.v_gas_dead.reshape(n_t,n_r)
+        if self.v_dust     !=None: self.v_dust     = self.v_dust.reshape(n_t*n_m,n_r)
         #
         # convert the integer variables from float to int
         #
