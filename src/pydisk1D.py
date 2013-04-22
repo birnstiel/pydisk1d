@@ -484,7 +484,7 @@ class pydisk1D:
                            ylim=[1e-4,1e4],xlabel='r[AU]',i_start=N,
                            ylabel='$\Sigma_g$ [g cm $^{-2}$]')
 
-    def plot_sigma_d_widget(self,N=0):
+    def plot_sigma_d_widget(self,N=0,sizelimits=False):
         """ 
         Produces a plot of the 2D dust surface density at snapshot number N.
         Arguments:
@@ -492,17 +492,41 @@ class pydisk1D:
         Example:
             >>> D.plot_sigma_d_widget(200)
         """ 
-        import widget as widget #@UnresolvedImport
+        import widget
+        add_arr = []
+        if sizelimits==True:
+            RHO_S     = self.nml['RHO_S']
+            a_fr = zeros([self.n_t,self.n_r])
+            a_dr = a_fr.copy()
+            a_df = a_fr.copy()
+            for N in arange(self.n_t):
+                sigma_d   = sum(self.sigma_d[N*self.n_m+arange(self.n_m),:],0)
+                fudge_fr = 0.37
+                fudge_dr = 0.55
+                gamma = dlydlx(self.x,self.sigma_g[N])+0.5*dlydlx(self.x,self.T[N])-1.5
+                #
+                # the standard fomula with the fudge factor
+                #
+                #a_fr  = fudge_fr*2*self.sigma_g[N,:]*self.nml['V_FRAG']**2./(3*pi*self.alpha[N]*RHO_S*k_b*self.T[N]/mu/m_p)
+                #
+                # the nonlinear one
+                #
+                b     = 3.*self.alpha[N]*k_b*self.T[N]/mu/m_p/self.nml['V_FRAG']**2
+                a_fr[N,:]  = self.sigma_g[N]/(pi*RHO_S)*(b-sqrt(b**2-4.))
+                a_dr[N,:]  = fudge_dr/(self.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*self.x**2.*(Grav*self.m_star[N]/self.x**3)/(abs(gamma)*(k_b*self.T[N]/mu/m_p))
+                NN     = 0.5
+                a_df[N,:]  = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*self.nml['V_FRAG']*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*k_b*self.T[N]/mu/m_p*(1.-NN)) #@UnusedVariable
+            add_arr += [a_fr,a_dr,2.*self.sigma_g/(pi*RHO_S)]
         #
         # plot gas surface density at the given snapshot 'N' 
         #
         if (N+1>self.sigma_g.shape[0]):
             N=0;
-        widget.plotter(x=self.x/self.AU,y=self.grainsizes,data=self.sigma_d,
+        widget.plotter(x=self.x/self.AU,y=self.grainsizes,data=self.sigma_d,data2=add_arr,
                            i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
                            zlog=1,xlim=[self.x[0]/self.AU,self.x[-1]/self.AU],
                            ylim=[self.grainsizes[0],self.grainsizes[-1]],
-                           zlim=[1e-10,1e1],xlabel='r [AU]',ylabel='grain size [cm]')
+                           zlim=[1e-10,1e1],xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['w-','r-','r--'])
 
     def plot_sigma_d(self,N=0,sizelimits=True,cm=cm.hot,plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w',fig=None,contour_lines=False):
         """
@@ -1009,7 +1033,6 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
             sigg_out = 10**interp(log10(x_out),log10(x_in),log10(sigma_g_1[j,:]))
             savetxt(outputdir+os.sep+'sigma_g_'+s+'_l.dat',sigg_out)
     print('ALL DONE')
-    
 
 def pydisk1D_readall(mask='data*'):
     """
@@ -1028,3 +1051,131 @@ def pydisk1D_readall(mask='data*'):
     print("FINISHED")            
     print("========")
                 
+def setup_diskev(sim_name,R,T,sig_g,alpha,inputvars,savedir='.',res=10):
+    """
+    This setup writes the input for a diskev simulation
+    
+    Arguments:
+    ----------
+    sim_name:     the name of the simulation
+    R:            the radius grid [cm]
+    T:            the temperature grid [K]
+    sig_g:        the gas surface density grid [g cm^-2]
+    alpha:        the turbulence parameter array
+    inputvars:    dictionary with the various parameters that should be set.
+    
+    Output:
+    -------
+    The output arrays for alpha,t,sigma_g,x, and the input namelist are written
+    in the current directory.
+    """
+    from constants import R_sun
+    #
+    # set the default name list variables
+    #
+    placeholder = random.uniform()
+    NML = dict(
+    T_STAR              = 4000.,
+    R_STAR              = 2.5*R_sun,
+    M_STAR_INITIAL      = 0.5,
+    M_STAR_FINAL        = 0.5,
+    R_IN                = 0.3,
+    R_OUT               = 2000,
+    T_0                 = 1e3,
+    T_MAX               = 1e6,
+    T_COAG_START        = 1e3,
+    RHO_S               = 1.6,
+    INTERVAL            = -100,
+    CONST_ALPHA         = 1e-2,
+    CONST_ALPHA_DEAD    = 1e-5,
+    INFALL_ALPHA_BOOST  = 0,
+    CS_CLOUD            = 3e4,
+    OMEGA_FACTOR        = 5e-2,
+    PHI_IRRAD           = 5e-2,
+    V_FRAG              = 1e3,
+    FRAG_SWITCH         = 1,
+    FRAG_SLOPE          = 0.166,
+    MIN_M               = 1.5e-14,
+    MAX_M               = 8e3,
+    GROWTH_LIMIT        = 8e3,
+    GAS2DUST_RATIO      = 100,
+    TEMPERATURE_METHOD  = 0,
+    STARTING_SIGMA      = 1,
+    READ_IN_ALPHA       = 1,
+    READ_IN_X           = 1,
+    SIGMA_0             = 21,
+    FRIDI_DELTA         = 0.8,
+    NO_VISC_HEAT        = 1,
+    USE_PEAK_POSITION   = 1,
+    GAS_EVOL_SWITCH     = 1,
+    DUST_EVOL_SWITCH    = 1,
+    ALLOW_DEADZONE      = 0,
+    TOOMRE_SWITCH       = 0,
+    COAGULATION_SWITCH  = 1,
+    COAGULATION_METHOD  = 2,
+    EQUILIBRIUM_SWITCH  = 0,
+    DUST_INFALL_SWITCH  = 0,
+    GAS_INFALL_SWITCH   = 0,
+    DUST_DIFFUSION      = 1,
+    DUST_RADIALDRIFT    = 1,
+    DUST_DRAG           = 1,
+    DRIFT_FUDGE_FACTOR  = 1,
+    VREL_BM             = 1,
+    VREL_TV             = 1,
+    VREL_RD             = 1,
+    VREL_VS             = 1,
+    VREL_AZ             = 1,
+    FEEDBACK_SWITCH     = 1,
+    EVAPORATION_SWITCH  = 0,
+    DUMP_COUNTER        = 200,
+    STOKES_FACTOR       = pi/2.,
+    STOKES_REGIME       = 0,
+    SC                  = 1.0)
+    #
+    # possibly create output directory
+    #
+    savedir = os.path.expanduser(savedir)
+    if not os.path.isdir(savedir): os.mkdir(savedir)
+    #
+    # now for each iteration, do the setup
+    #
+    for i in arange(1):#@UnusedVariable
+        #
+        # copy the name list ...
+        #
+        nml = NML.copy()
+        nml['R_IN']         = R[0]/AU
+        nml['R_OUT']        = R[-1]/AU
+        #
+        # change it ...
+        #
+        for n,v in inputvars.iteritems():
+            if n in nml:
+                nml[n] = v
+            else:
+                print('ERROR: unknown variable %s'%n)
+                sys.exit(1)
+        for n,v in nml.iteritems():
+            if v==placeholder:
+                print('ERROR: %s needs to be set'%n)
+                sys.exit(1)            
+        #
+        # now the number of bins
+        #
+        NMBINS = log10(nml['MAX_M']/nml['MIN_M'])*res# higher res
+        #
+        # create the name
+        #
+        NAME = sim_name
+        NAME += '_%i' % (NMBINS)
+        #
+        # save it.
+        # 
+        write_nml(nml,savedir+os.sep+'input_'+NAME+'.nml', 'INPUTVARIABLES')
+        #
+        # write the grid and the surface density
+        #
+        savetxt(savedir+os.sep+'x_input_'+    NAME+'.dat', R,     delimiter=' ')
+        savetxt(savedir+os.sep+'gas_input_'+  NAME+'.dat', sig_g, delimiter=' ')
+        savetxt(savedir+os.sep+'T_input_'+    NAME+'.dat', T,     delimiter=' ')
+        savetxt(savedir+os.sep+'alpha_input_'+NAME+'.dat', alpha, delimiter=' ')
