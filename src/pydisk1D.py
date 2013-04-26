@@ -1160,6 +1160,10 @@ def setup_diskev(sim_name,R,T,sig_g,alpha,inputvars,savedir='.',res=10):
                 print('ERROR: %s needs to be set'%n)
                 sys.exit(1)            
         #
+        # remove growth limit
+        #
+        nml['GROWTH_LIMIT'] = nml['MAX_M']
+        #
         # now the number of bins
         #
         NMBINS = log10(nml['MAX_M']/nml['MIN_M'])*res# higher res
