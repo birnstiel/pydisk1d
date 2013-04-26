@@ -522,11 +522,12 @@ class pydisk1D:
         #
         if (N+1>self.sigma_g.shape[0]):
             N=0;
-        widget.plotter(x=self.x/self.AU,y=self.grainsizes,data=self.sigma_d,data2=add_arr,
-                           i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
-                           zlog=1,xlim=[self.x[0]/self.AU,self.x[-1]/self.AU],
-                           ylim=[self.grainsizes[0],self.grainsizes[-1]],
-                           zlim=[1e-10,1e1],xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['w-','r-','r--'])
+        widget.plotter(x=self.x/self.AU,y=self.grainsizes,
+                       data=self.sigma_d/log(self.grainsizes[1]/self.grainsizes[0]),
+                       data2=add_arr,i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
+                       zlog=1,xlim=[self.x[0]/self.AU,self.x[-1]/self.AU],
+                       ylim=[self.grainsizes[0],self.grainsizes[-1]],
+                       zlim=[1e-10,1e1],xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['w-','r-','r--'])
 
     def plot_sigma_d(self,N=0,sizelimits=True,cm=cm.hot,plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w',fig=None,contour_lines=False):
         """
@@ -581,10 +582,10 @@ class pydisk1D:
         #
         if plot_style=='c':
             contourf(self.x/1.4e13,self.grainsizes,log10(10**clevel[0]+ 
-              self.sigma_d[N*self.n_m+arange(0,self.n_m),:]),clevel,cmap=cm)
+              self.sigma_d[N*self.n_m+arange(0,self.n_m),:]/log(self.grainsizes[1]/self.grainsizes[0])),clevel,cmap=cm)
         if plot_style=='s':
             X,Y = meshgrid(self.x,self.grainsizes)
-            pcolor(X/1.4e13,Y,log10(1e-10+self.sigma_d[N*self.n_m+arange(0,self.n_m),:]))
+            pcolor(X/1.4e13,Y,log10(1e-10+self.sigma_d[N*self.n_m+arange(0,self.n_m),:]/log(self.grainsizes[1]/self.grainsizes[0])))
         gca()
         if sizelimits==True:
             if yl==None:
