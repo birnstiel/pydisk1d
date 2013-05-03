@@ -522,12 +522,13 @@ class pydisk1D:
         #
         if (N+1>self.sigma_g.shape[0]):
             N=0;
+        gsf=log(self.grainsizes[1]/self.grainsizes[0])
         widget.plotter(x=self.x/self.AU,y=self.grainsizes,
-                       data=self.sigma_d/log(self.grainsizes[1]/self.grainsizes[0]),
+                       data=self.sigma_d/gsf,
                        data2=add_arr,i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
                        zlog=1,xlim=[self.x[0]/self.AU,self.x[-1]/self.AU],
                        ylim=[self.grainsizes[0],self.grainsizes[-1]],
-                       zlim=[1e-10,1e1],xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['w-','r-','r--'])
+                       zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['w-','r-','r--'])
 
     def plot_sigma_d(self,N=0,sizelimits=True,cm=cm.hot,plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w',fig=None,contour_lines=False):
         """
