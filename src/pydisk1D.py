@@ -1053,7 +1053,7 @@ def pydisk1D_readall(mask='data*'):
     print("FINISHED")            
     print("========")
                 
-def setup_diskev(sim_name,R,T,sig_g,alpha,inputvars,savedir='.',res=10):
+def setup_diskev(sim_name,R,T,sig_g,alpha,inputvars,sig_d=None,savedir='.',res=10):
     """
     This setup writes the input for a diskev simulation
     
@@ -1065,6 +1065,18 @@ def setup_diskev(sim_name,R,T,sig_g,alpha,inputvars,savedir='.',res=10):
     sig_g:        the gas surface density grid [g cm^-2]
     alpha:        the turbulence parameter array
     inputvars:    dictionary with the various parameters that should be set.
+    
+    Keywords:
+    ---------
+    sig_d : array
+        A dust surface density array, which will be written out along with
+        the other setup files
+        
+    savedir : string
+        the name of the directory where the output is stored
+        
+    res : float
+        resolution of the mass grid, there are `res` bins per magnitude in mass
     
     Output:
     -------
@@ -1183,5 +1195,6 @@ def setup_diskev(sim_name,R,T,sig_g,alpha,inputvars,savedir='.',res=10):
         #
         savetxt(savedir+os.sep+'x_input_'+    NAME+'.dat', R,     delimiter=' ')
         savetxt(savedir+os.sep+'gas_input_'+  NAME+'.dat', sig_g, delimiter=' ')
-        savetxt(savedir+os.sep+'T_input_'+    NAME+'.dat', T,     delimiter=' ')
+        if nml['TEMPERATURE_METHOD']==0: savetxt(savedir+os.sep+'T_input_'+    NAME+'.dat', T,     delimiter=' ')
         savetxt(savedir+os.sep+'alpha_input_'+NAME+'.dat', alpha, delimiter=' ')
+        if sig_d!=None: savetxt(savedir+os.sep+'dust_input_'+NAME+'.dat', sig_d, delimiter=' ')
