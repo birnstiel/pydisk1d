@@ -516,7 +516,7 @@ class pydisk1D:
                 a_dr[N,:]  = fudge_dr/(self.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*self.x**2.*(Grav*self.m_star[N]/self.x**3)/(abs(gamma)*(k_b*self.T[N]/mu/m_p))
                 NN     = 0.5
                 a_df[N,:]  = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*self.nml['V_FRAG']*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*k_b*self.T[N]/mu/m_p*(1.-NN)) #@UnusedVariable
-            add_arr += [a_fr,a_dr,2.*self.sigma_g/(pi*RHO_S)]
+            add_arr += [2.*self.sigma_g/(pi*RHO_S),a_fr,a_dr]
         #
         # plot gas surface density at the given snapshot 'N' 
         #
@@ -528,7 +528,7 @@ class pydisk1D:
                        data2=add_arr,i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
                        zlog=1,xlim=[self.x[0]/self.AU,self.x[-1]/self.AU],
                        ylim=[self.grainsizes[0],self.grainsizes[-1]],
-                       zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['w-','r-','r--'])
+                       zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['k','w-','r-','y--'])
 
     def plot_sigma_d(self,N=0,sizelimits=True,cm=cm.hot,plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w',fig=None,contour_lines=False):
         """
