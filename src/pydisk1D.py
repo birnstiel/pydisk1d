@@ -814,6 +814,67 @@ class pydisk1D:
         #
         f.close()
         print(' ... DONE')
+        
+    # -----------------------------------------------------------------------------
+    def write_setup(self,it):
+        """
+        This function writes out the setup files to continue a simulation from a given snapshot
+        
+        Arguments:
+        ----------
+        
+        it
+        :    snapshot index
+        
+        Output:
+        -------
+        the namelist file and the other input files will be written out
+        """
+        from constants import M_sun
+        #
+        # create output folder or ask if it should be overwritten
+        #
+        dirname = 'setup_files'
+        simname = self.data_dir
+        simname = re.sub('^data_','',simname)
+        simname = re.sub('^in_','',simname)
+        if os.path.isdir(dirname):
+            inp = None
+            while inp not in ['','y','n']:
+                inp=raw_input('\'%s\' already exists, overwrite [Y/n] '%dirname).lower()
+                if inp=='n': 
+                    print('operation cancelled')
+                    return
+        else:
+            os.mkdir(dirname)
+        #
+        # convert index
+        #
+        it=find(self.timesteps==self.timesteps[it])[0]
+        sys.stdout.write('Writing out index %i at time %g years ... '%(it,self.timesteps[it]/year));
+        sys.stdout.flush()
+        #
+        # write nml file
+        #
+        nml = self.nml.copy()
+        nml['T_0'] = self.timesteps[it]/year
+        if nml['INTERVAL']<0: nml['INTERVAL'] += it
+        nml['M_STAR_INITIAL'] = self.m_star[it]/M_sun
+        nml['T_COAG_START'] = max(self.timesteps[it]/year,nml['T_COAG_START'])
+        nml['STARTING_SIGMA'] = 1
+        nml['READ_IN_ALPHA'] = 1
+        nml['READ_IN_X'] = 1
+        write_nml(nml,dirname+os.sep+'input.nml','INPUTVARIABLES')
+        #
+        # write other data
+        #
+        savetxt(dirname+os.sep+'x_input_'+    simname+'.dat', self.x,          delimiter=' ')
+        savetxt(dirname+os.sep+'gas_input_'+  simname+'.dat', self.sigma_g[it],delimiter=' ')
+        savetxt(dirname+os.sep+'dust_input_'+ simname+'.dat', self.sigma_d[it*self.n_m+arange(self.n_m),:],delimiter=' ')
+        if nml['TEMPERATURE_METHOD']==0:
+            savetxt(dirname+os.sep+'T_input_'+simname+'.dat', self.T[it],      delimiter=' ')
+        savetxt(dirname+os.sep+'alpha_input_'+simname+'.dat', self.alpha[it],delimiter=' ')
+        print('Done!')
 
     # -----------------------------------------------------------------------------
     def export_general(self,out_dir):
