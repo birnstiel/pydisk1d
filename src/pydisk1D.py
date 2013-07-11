@@ -1,6 +1,5 @@
-from matplotlib.pyplot import * #@UnusedWildImport
 from numpy import * #@UnusedWildImport
-
+import sys,matplotlib
 import h5py
 import re
 import glob
@@ -132,12 +131,106 @@ class pydisk1D:
         #
         self.AU   = AU
         self.year = year
-    
+
+    def __add__(self,b):
+        """
+        Method to concatenate simulations. Will not return new object, but
+        add the second to the first one, i.e. `sim1+sim2` will result in all
+        the `sim2` data being appended to the respective fields of `sim1`.
+        
+        Arguments:
+        ----------
+        
+        b: pydisk1D object
+        :    the data to be added to the current object
+        
+        """
+        #
+        # compare the nml
+        #
+        merge_keys = ['T_0','INTERVAL','M_STAR_INITIAL','T_COAG_START']
+        for key,val in self.nml.iteritems():
+            if val!=b.nml[key] and key not in merge_keys:
+                print('WARNING: nml entries for \'%s\' differ!'%key)
+        #
+        # merge specific keys
+        #
+        self.nml['INTERVAL'] += 1
+        #
+        # redefine data_dir
+        #
+        self.data_dir+='+%s'%b.data_dir
+        #
+        # redefine number of snapshots
+        #
+        self.n_t=self.n_t+b.n_t
+        #
+        # check if those agree
+        #
+        eqkeys = [
+            'm_grid',
+            'n_m',
+            'ttable',
+            'n_r',
+            'grainsizes',
+            'x',
+            'x05',
+            'kappa_p',
+            'kappa_r',
+            'kappa_r_r',
+            'kappa_p_r']
+        for k in eqkeys:
+            if all(getattr(self,k)!=getattr(self,k)):
+                print('WARNING: key \'%s\' is not identical'%k)
+        #
+        # merge the 0D arrays
+        #
+        addkeys0D = [
+            'fallen_disk_mass',
+            'm_dot_star',
+            'steps',
+            'accretion_dust',
+            'accretion_dust_e',
+            'gas_flux_o',
+            'timesteps',
+            'm_star',
+            'r_centri',
+            'r_min',
+            'accretion_gas',
+            'r_snow',
+            'd_evap',
+            'peak_position',
+            'dust_flux',
+            'dust_flux_o',
+            'dust_flux_o_e']
+        for k in addkeys0D:
+            setattr(self, k, append(getattr(self,k),getattr(b,k)))
+        #
+        # merge the 1D and 2D arrays
+        #
+        addkeys1D = [
+            'sigma_g',
+            'D_grain1',
+            'T',
+            'flim',
+            'flim_dead',
+            'alpha',
+            'v_gas',
+            'alpha_dead',
+            'v_gas_dead',
+            'nu',
+            'sig_dot_t',
+            'sigma_dead']
+        addkeys2D = ['v_dust','sigma_d']
+        for k in addkeys1D+addkeys2D:
+            setattr(self, k, append(getattr(self,k),getattr(b,k),0))
+
     def sigma_d_movie(self,i0=0,i1=-1,steps=1):
         """
         This uses the other sub-routine plot_sigma_d() to produce
         a movie of the time evolution
         """
+        from matplotlib.pyplot import figure,savefig,clf,close
         import subprocess
         if i0<0: i0=0
         if i1>self.n_t or i1==-1: i1 = self.n_t - 1
@@ -204,7 +297,8 @@ class pydisk1D:
         #
         # open file for reading 
         #
-        print "loading from",filename
+        sys.stdout.write("loading from %s"%filename)
+        sys.stdout.flush()
         f = h5py.File(filename,'r')
         #
         # load data from file
@@ -375,8 +469,7 @@ class pydisk1D:
         """
         m_g = array([trapz(2*pi*self.x*sig_g,self.x) for sig_g in self.sigma_g])
         return m_g
-    
-    
+       
     def get_m_dust(self):
         """
         Calculates and returns the total dust mass as function of time
@@ -440,6 +533,7 @@ class pydisk1D:
         Example:
             >>> D.plot_sigma_g(133)
         """ 
+        from matplotlib.pyplot import loglog,title,xlabel,ylabel,ylim
         #
         # plot gas surface density at the given snapshot 'N' 
         #
@@ -483,6 +577,26 @@ class pydisk1D:
                            xlim=[self.x[0]/self.AU,self.x[-1]/self.AU],
                            ylim=[1e-4,1e4],xlabel='r[AU]',i_start=N,
                            ylabel='$\Sigma_g$ [g cm $^{-2}$]')
+
+    def plot_sigma_widget(self,N=0):
+        """ 
+        Produces a plot of the gas and total dust surface density at snapshot number N.
+        Arguments:
+            N   index of the snapshot, defaults to first snapshot
+        Example:
+            >>> D.plot_sigma_widget(133)
+        """ 
+        import widget as widget #@UnresolvedImport
+        #
+        # plot gas surface density at the given snapshot 'N' 
+        #
+        if (N+1>self.sigma_g.shape[0]):
+            N=0;
+        widget.plotter(x=self.x/self.AU,data=self.sigma_g,data2=self.get_sigma_dust_total(),
+                           times=self.timesteps/self.year,xlog=1,ylog=1,
+                           xlim=[self.x[0]/self.AU,self.x[-1]/self.AU],
+                           ylim=[1e-4,1e4],xlabel='r[AU]',i_start=N,
+                           ylabel='$\Sigma$ [g cm $^{-2}$]')
 
     def plot_sigma_d_widget(self,N=0,sizelimits=False):
         """ 
@@ -530,7 +644,7 @@ class pydisk1D:
                        ylim=[self.grainsizes[0],self.grainsizes[-1]],
                        zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['k','w-','r-','y--'])
 
-    def plot_sigma_d(self,N=0,sizelimits=True,cm=cm.hot,plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w',fig=None,contour_lines=False):
+    def plot_sigma_d(self,N=0,sizelimits=True,cm=matplotlib.cm.get_cmap('hot'),plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w',fig=None,contour_lines=False):
         """
         Produces a plot of the dust surface density at snapshot number N.
         
@@ -540,6 +654,8 @@ class pydisk1D:
             >>> D.plot_sigma_d(133)
 
         """
+        from matplotlib.pyplot import figure,loglog,title,xlabel,ylabel,\
+        xlim,cm,contourf,pcolor,gca,xscale,yscale,colorbar,contour
         #
         # check input
         #
@@ -864,7 +980,7 @@ class pydisk1D:
         nml['STARTING_SIGMA'] = 1
         nml['READ_IN_ALPHA'] = 1
         nml['READ_IN_X'] = 1
-        write_nml(nml,dirname+os.sep+'input.nml','INPUTVARIABLES')
+        write_nml(nml,dirname+os.sep+'input_%s.nml'%simname,'INPUTVARIABLES')
         #
         # write other data
         #
