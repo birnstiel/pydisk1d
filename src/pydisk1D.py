@@ -598,11 +598,22 @@ class pydisk1D:
                            ylim=[1e-4,1e4],xlabel='r[AU]',i_start=N,
                            ylabel='$\Sigma$ [g cm $^{-2}$]')
 
-    def plot_sigma_d_widget(self,N=0,sizelimits=False):
+    def plot_sigma_d_widget(self,N=0,sizelimits=False,dpi=None,**kwargs):
         """ 
         Produces a plot of the 2D dust surface density at snapshot number N.
-        Arguments:
-            N   index of the snapshot, defaults to first snapshot
+        
+        Keywords:
+        N
+        :    index of the snapshot, defaults to first snapshot
+        
+        sizelimits
+        :    wether or not to show the drift / fragmentationsize limits
+        
+        dpi
+        :    resolution of the produced images and movies
+        
+        
+            
         Example:
             >>> D.plot_sigma_d_widget(200)
         """ 
@@ -640,11 +651,9 @@ class pydisk1D:
         widget.plotter(x=self.x/self.AU,y=self.grainsizes,
                        data=self.sigma_d/gsf,
                        data2=add_arr,i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
-                       zlog=1,xlim=[self.x[0]/self.AU,self.x[-1]/self.AU],
-                       ylim=[self.grainsizes[0],self.grainsizes[-1]],
-                       zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['k','w-','r-','y--'])
+                       zlog=1,zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['k','w-','r-','y--'],dpi=dpi,**kwargs)
 
-    def plot_sigma_d(self,N=0,sizelimits=True,cm=matplotlib.cm.get_cmap('hot'),plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w',fig=None,contour_lines=False):
+    def plot_sigma_d(self,N=0,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w',fig=None,contour_lines=False):
         """
         Produces a plot of the dust surface density at snapshot number N.
         
@@ -699,7 +708,7 @@ class pydisk1D:
         #
         if plot_style=='c':
             contourf(self.x/1.4e13,self.grainsizes,log10(10**clevel[0]+ 
-              self.sigma_d[N*self.n_m+arange(0,self.n_m),:]/log(self.grainsizes[1]/self.grainsizes[0])),clevel,cmap=cm)
+              self.sigma_d[N*self.n_m+arange(0,self.n_m),:]/log(self.grainsizes[1]/self.grainsizes[0])),clevel,cmap=cmap)
         if plot_style=='s':
             X,Y = meshgrid(self.x,self.grainsizes)
             pcolor(X/1.4e13,Y,log10(1e-10+self.sigma_d[N*self.n_m+arange(0,self.n_m),:]/log(self.grainsizes[1]/self.grainsizes[0])))
