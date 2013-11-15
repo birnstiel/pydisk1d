@@ -5,7 +5,7 @@ import re
 import glob
 import os
 from uTILities import parse_nml, dlydlx, write_nml, progress_bar
-from constants import AU,year, k_b, m_p, mu, Grav
+from constants import AU,year, k_b, m_p, mu, Grav, sig_h2
 from matplotlib.mlab import find
 from scipy.interpolate import RectBivariateSpline
 
@@ -636,12 +636,17 @@ class pydisk1D:
                 #
                 # the nonlinear one
                 #
-                b     = 3.*self.alpha[N]*k_b*self.T[N]/mu/m_p/self.nml['V_FRAG']**2
+                om    = sqrt(Grav*self.m_star[N]/self.x**3)
+                cs    = sqrt(k_b*self.T[N]/mu/m_p)
+                b     = 3.*self.alpha[N]*cs**2/self.nml['V_FRAG']**2
                 a_fr[N,:]  = self.sigma_g[N]/(pi*RHO_S)*(b-sqrt(b**2-4.))
-                a_dr[N,:]  = fudge_dr/(self.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*self.x**2.*(Grav*self.m_star[N]/self.x**3)/(abs(gamma)*(k_b*self.T[N]/mu/m_p))
+                a_dr[N,:]  = fudge_dr/(self.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*self.x**2.*(Grav*self.m_star[N]/self.x**3)/(abs(gamma)*cs**2)
                 NN     = 0.5
-                a_df[N,:]  = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*self.nml['V_FRAG']*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*k_b*self.T[N]/mu/m_p*(1.-NN)) #@UnusedVariable
-            add_arr += [2.*self.sigma_g/(pi*RHO_S),a_fr,a_dr]
+                a_df[N,:]  = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*self.nml['V_FRAG']*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*cs**2*(1.-NN)) #@UnusedVariable
+                St  = 2.*self.sigma_g/(pi*RHO_S)
+                if self.nml['STOKES_REGIME']==1:
+                    St = minimum(St,sqrt(9.*sqrt(2.*pi)/16.*mu*m_p*cs/(om*RHO_S*sig_h2)))
+            add_arr += [St,a_fr,a_dr]
         #
         # plot gas surface density at the given snapshot 'N' 
         #
