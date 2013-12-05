@@ -1090,6 +1090,46 @@ class pydisk1D:
                 val = st
         return val
 # ============================================================================
+
+    #
+    # define this function only
+    # if ipython import works
+    #
+    def_load = True
+    try:
+        from IPython import get_ipython
+    except:
+        def_load = False
+    if def_load:
+        def make_sim_interactive(self):
+            """
+            This function is to make a simulation result locally availabe in the interactive ipython/python environment.
+            Note that in order to make it work, you cannot import it but you need to execute it like %run or execfile(...)
+            """
+            #
+            # define a dictionary and fill it with the names and values of the variables
+            #
+            variables = dict()
+            attributes = dir(self)
+            for attr in attributes:
+                val = getattr(self,attr)
+                #
+                # load everything but methods
+                #
+                if type(val).__name__ != 'instancemethod':
+                    variables[attr] = val
+            #
+            # get the workspace and load the dictionary into it
+            #
+            ns = get_ipython()
+            ns.user_ns.update(variables)
+            #
+            # make the namelist variables also global
+            #
+            if hasattr(self,'nml'): ns.user_ns.update(self.nml)
+    else:
+        print('ERROR: could not import ipython, thus make_sim_interactive could not be defined')
+
 def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
     """
     This file interpolate the distribution on a new grid. Will read all mat/hdf5
