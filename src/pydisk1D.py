@@ -498,6 +498,19 @@ class pydisk1D:
         """
         sig_d_t = array([sum(self.sigma_d[it*self.n_m+arange(self.n_m),:],0) for it in arange(self.n_t)])
         return sig_d_t
+    
+    def get_d2g(self):
+        """
+        Calculates and returns the total dust mass as function of time
+        
+        Arguments:
+        None
+        Example:
+        >>>sig_d = d.sigma_dust_total()
+        >>>loglog(d.x/AU,sid_d[-1])
+        """
+        return self.get_sigma_dust_total()/self.sigma_g
+
 
     def plot_d2g_widget(self,N=0):
         """ 
