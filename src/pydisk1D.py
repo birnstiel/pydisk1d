@@ -225,10 +225,24 @@ class pydisk1D:
         for k in addkeys1D+addkeys2D:
             setattr(self, k, append(getattr(self,k),getattr(b,k),0))
 
-    def sigma_d_movie(self,i0=0,i1=-1,steps=1):
+    def sigma_d_movie(self,i0=0,i1=-1,steps=1,**kwargs):
         """
-        This uses the other sub-routine plot_sigma_d() to produce
-        a movie of the time evolution
+        This uses the other sub-routine `plot_sigma_d` to produce
+        a movie of the time evolution.
+        
+        Keywords:
+        ---------
+        
+        i0 : int
+        : index of the first snapshot
+        
+        i1 : int
+        : index of the last snapshot
+        
+        steps : int
+        : step size between each frame
+        
+        The **kwargs are passed to `plot_sigma_d
         """
         from matplotlib.pyplot import figure,savefig,clf,close
         import subprocess
@@ -248,8 +262,8 @@ class pydisk1D:
         #
         fig=figure()
         for i,i_s in enumerate(arange(i0,i1+1,steps)):
-            self.plot_sigma_d(i_s,fig=fig)
-            savefig('movie_images/img_%3.3i.png'%i)
+            self.plot_sigma_d(i_s,fig=fig,**kwargs)
+            savefig('movie_images/img_%3.3i.png'%i,facecolor=fig.get_facecolor())
             clf()
             progress_bar(float(i_s-i0)/float(i1+1-i0)*100., 'making images')
         close(fig)
@@ -258,8 +272,10 @@ class pydisk1D:
         #
         moviename = str(self.data_dir)
         if moviename[-1] == os.sep: moviename = moviename[0:-1]
+        
         moviename = os.path.basename(moviename)+'.mp4'
-        ret=subprocess.call(['ffmpeg','-i','movie_images/img_%03d.png','-r','10','-b','512k',moviename]);
+        ret=subprocess.call(['ffmpeg','-i','movie_images/img_%03d.png','-c:v','libx264','-crf','20','-maxrate','400k','-pix_fmt','yuv420p','-bufsize','1835k',moviename])
+
         if ret==0:
             print "Movie created, cleaning up ..."
             for i,i_s in enumerate(arange(i0,i1+1,steps)):
@@ -511,7 +527,6 @@ class pydisk1D:
         """
         return self.get_sigma_dust_total()/self.sigma_g
 
-
     def plot_d2g_widget(self,N=0):
         """ 
         Produces a plot-widget of the dust-to-gas mass ratio.
@@ -611,7 +626,7 @@ class pydisk1D:
                            ylim=[1e-4,1e4],xlabel='r[AU]',i_start=N,
                            ylabel='$\Sigma$ [g cm $^{-2}$]')
 
-    def plot_sigma_d_widget(self,N=0,sizelimits=False,dpi=None,**kwargs):
+    def plot_sigma_d_widget(self,N=0,sizelimits=False,**kwargs):
         """ 
         Produces a plot of the 2D dust surface density at snapshot number N.
         
@@ -621,12 +636,10 @@ class pydisk1D:
         
         sizelimits
         :    wether or not to show the drift / fragmentationsize limits
+
+        **kwargs
+        : will be passed forward to the widget
         
-        dpi
-        :    resolution of the produced images and movies
-        
-        
-            
         Example:
             >>> D.plot_sigma_d_widget(200)
         """ 
@@ -669,20 +682,57 @@ class pydisk1D:
         widget.plotter(x=self.x/self.AU,y=self.grainsizes,
                        data=self.sigma_d/gsf,
                        data2=add_arr,i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
-                       zlog=1,zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['k','w-','r-','y--'],dpi=dpi,**kwargs)
+                       zlog=1,zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['k','w-','r-','y--'],**kwargs)
 
-    def plot_sigma_d(self,N=0,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),plot_style='c',xl=None,yl=None,clevel=arange(-10,1),cb_color='w',fig=None,contour_lines=False):
+    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),plot_style='c',xl=None,yl=None,clevel=arange(-10,1),ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False):
         """
-        Produces a plot of the dust surface density at snapshot number N.
+        Produces my default plot of the dust surface density.
         
-        Arguments:
-            N   index of the snapshot, defaults to first snapshot
+        N : integer
+        : index of the snapshot, defaults to last snapshot
+        
+        sizelimits : bool
+        : wether or not to overplot the growth barriers
+        
+        cmap : colormap
+        : colormap to be used for the plot
+        
+        plot_style : str
+        : 'c' for contourf, 's' for pcolor
+        
+        xl : list
+        : x limits
+        
+        yl: list
+        : y limits
+        
+        clevel : array or list
+        : contour levels for the contour plot
+        
+        ax_color : str
+        : color of the fonts and axes
+        
+        leg : bool
+        : wether or not to print a legend for the size limits
+        
+        bg_color : color
+        : color to use as background
+        
+        cb_color : color
+        : color to use for the color bar axes and labels
+        
+        fig : figure
+        : into which figure to plot
+        
+        contour_lines : bool
+        : whether or not to print lines between the contour areas
+        
         Example:
             >>> D.plot_sigma_d(133)
 
         """
         from matplotlib.pyplot import figure,loglog,title,xlabel,ylabel,\
-        xlim,cm,contourf,pcolor,gca,xscale,yscale,colorbar,contour
+        xlim,cm,contourf,pcolor,gca,xscale,yscale,colorbar,contour,setp,legend
         #
         # check input
         #
@@ -721,12 +771,14 @@ class pydisk1D:
         if fig==None:
             fig=figure()
         figure(fig.number)
+        fig.set_facecolor(bg_color)
         #
         # draw the data
         #
         if plot_style=='c':
-            contourf(self.x/1.4e13,self.grainsizes,log10(10**clevel[0]+ 
-              self.sigma_d[N*self.n_m+arange(0,self.n_m),:]/log(self.grainsizes[1]/self.grainsizes[0])),clevel,cmap=cmap)
+            cont=contourf(self.x/1.4e13,self.grainsizes,log10(#10**clevel[0]+ 
+              self.sigma_d[N*self.n_m+arange(0,self.n_m),:]/log(self.grainsizes[1]/self.grainsizes[0])),clevel,cmap=cmap,extend='both')
+            cont.cmap.set_under('k')
         if plot_style=='s':
             X,Y = meshgrid(self.x,self.grainsizes)
             pcolor(X/1.4e13,Y,log10(1e-10+self.sigma_d[N*self.n_m+arange(0,self.n_m),:]/log(self.grainsizes[1]/self.grainsizes[0])))
@@ -736,8 +788,8 @@ class pydisk1D:
                 yl=array(gca().get_ylim())
                 yl[0]=max(yl[0],self.grainsizes[0])
             if self.nml['FRAG_SWITCH']==1:
-                loglog(self.x/AU,a_fr,'r-',linewidth=2)
-            loglog(self.x/AU,a_dr,'r--',linewidth=2)
+                l1,=loglog(self.x/AU,a_fr,'r-',linewidth=2)
+            l2,=loglog(self.x/AU,a_dr,'r--',linewidth=2)
         if xl!=None:
             gca().set_xlim(xl)
         else:
@@ -770,8 +822,8 @@ class pydisk1D:
         #
         # set axes label
         #
-        xlabel("r [AU]")
-        ylabel("grain size [cm]")
+        xlabel("r [AU]",**{'color':ax_color})
+        ylabel("grain size [cm]",**{'color':ax_color})
         #
         # now draw the contour lines
         #
@@ -790,7 +842,19 @@ class pydisk1D:
         #
         # plot the snapshot time in the title
         #
-        title('time = '+timestr+' yr')
+        title('time = '+timestr+' yr',**{'color':ax_color})
+        if ax_color!='k':
+            ax.xaxis.label.set_color(ax_color)
+            ax.yaxis.label.set_color(ax_color)
+            ax.tick_params(axis='both', which='both',colors=ax_color)
+            setp(ax.spines.values(), color=ax_color)
+        #
+        # print a legend
+        #
+        if leg==True and sizelimits==True:
+            leg=legend((l1,l2),('fragmentation barrier','drift barrier'),loc='upper left')
+            for t in leg.get_texts(): t.set_color(ax_color) 
+            leg.get_frame().set_color('None') 
 
     def read_diskev(self,data_dir="data/"):
         """
