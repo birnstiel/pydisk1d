@@ -242,6 +242,11 @@ class pydisk1D:
         steps : int
         : step size between each frame
         
+        Examples:
+        ---------
+        
+            d.plot_sigma_d(N=-1,cmap=get_cmap('YlGnBu_r'),clevel=arange(-9,2),ax_color='w',bg_color='k',xl=[0.3,500],fs=14)
+        
         The **kwargs are passed to `plot_sigma_d
         """
         from matplotlib.pyplot import figure,savefig,clf,close
@@ -684,7 +689,7 @@ class pydisk1D:
                        data2=add_arr,i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
                        zlog=1,zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['k','w-','r-','y--'],**kwargs)
 
-    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),plot_style='c',xl=None,yl=None,clevel=arange(-10,1),ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False):
+    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,clevel=arange(-10,1),ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False):
         """
         Produces my default plot of the dust surface density.
         
@@ -696,6 +701,9 @@ class pydisk1D:
         
         cmap : colormap
         : colormap to be used for the plot
+
+        fs : int
+        : font size
         
         plot_style : str
         : 'c' for contourf, 's' for pcolor
@@ -732,7 +740,9 @@ class pydisk1D:
 
         """
         from matplotlib.pyplot import figure,loglog,title,xlabel,ylabel,\
-        xlim,cm,contourf,pcolor,gca,xscale,yscale,colorbar,contour,setp,legend
+        xlim,cm,contourf,pcolor,gca,xscale,yscale,colorbar,contour,setp,legend,rcParams
+        params = rcParams.copy()
+        if fs!=None: rcParams['font.size']=fs
         #
         # check input
         #
@@ -802,11 +812,6 @@ class pydisk1D:
         xscale('log')
         yscale('log')
         #
-        # set colorbar it's title 
-        #
-#        col=colorbar()
-#        col.ax.set_title("$\log_{10} \sigma$ [g cm$^{-2}$]")
-        #
         # draw color bar
         #
         ax=gca()
@@ -817,8 +822,8 @@ class pydisk1D:
         for t in cb.ax.get_yticklabels():
             t.set_fontsize(12)
             tx = append(tx,'$10^{'+t.get_text().replace(u'\u2212','-')+'}$')
-        cb.ax.set_yticklabels(tx[:-1],color=cb_color,fontsize=14)
-        cb.ax.set_title('$\log_{10}\,\sigma(r,a) \mathrm{[g\,cm}^{-2}\mathrm{]}$',fontsize=14,color=cb_color)
+        cb.ax.set_yticklabels(tx[:-1],color=cb_color,fontsize=(fs or 14))
+        cb.ax.set_title('$\log_{10}\,\sigma(r,a) \mathrm{[g\,cm}^{-2}\mathrm{]}$',fontsize=(fs or 14),color=cb_color)
         #
         # set axes label
         #
@@ -854,7 +859,11 @@ class pydisk1D:
         if leg==True and sizelimits==True:
             leg=legend((l1,l2),('fragmentation barrier','drift barrier'),loc='upper left')
             for t in leg.get_texts(): t.set_color(ax_color) 
-            leg.get_frame().set_color('None') 
+            leg.get_frame().set_color('None')
+        #
+        # back to previous settings
+        # 
+        rcParams=params
 
     def read_diskev(self,data_dir="data/"):
         """
