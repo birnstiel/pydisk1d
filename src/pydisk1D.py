@@ -250,6 +250,8 @@ class pydisk1D:
         The **kwargs are passed to `plot_sigma_d
         """
         from matplotlib.pyplot import figure,savefig,clf,close
+        from random import choice
+        from string import ascii_letters
         import subprocess
         if i0<0: i0=0
         if i1>self.n_t or i1==-1: i1 = self.n_t - 1
@@ -257,18 +259,19 @@ class pydisk1D:
         # check if there is already a movie_images folder
         # otherwise create one
         #
-        if os.path.isdir('movie_images'):
-            print('movie_images folder already exists, please delete it first')
+        dirname    = 'movie_images_'+''.join(choice(ascii_letters) for x in range(5))
+        if os.path.isdir(dirname):
+            print('%s folder already exists, please delete it first'%dirname)
             sys.exit(-1)
         else:
-            os.mkdir('movie_images')
+            os.mkdir(dirname)
         #
         # make the images
         #
         fig=figure()
         for i,i_s in enumerate(arange(i0,i1+1,steps)):
             self.plot_sigma_d(i_s,fig=fig,**kwargs)
-            savefig('movie_images/img_%3.3i.png'%i,facecolor=fig.get_facecolor())
+            savefig(dirname+os.sep+'img_%3.3i.png'%i,facecolor=fig.get_facecolor())
             clf()
             progress_bar(float(i_s-i0)/float(i1+1-i0)*100., 'making images')
         close(fig)
@@ -279,13 +282,13 @@ class pydisk1D:
         if moviename[-1] == os.sep: moviename = moviename[0:-1]
         
         moviename = os.path.basename(moviename)+'.mp4'
-        ret=subprocess.call(['ffmpeg','-i','movie_images/img_%03d.png','-c:v','libx264','-crf','20','-maxrate','400k','-pix_fmt','yuv420p','-bufsize','1835k',moviename])
+        ret=subprocess.call(['ffmpeg','-i',dirname+os.sep+'img_%03d.png','-c:v','libx264','-crf','20','-maxrate','400k','-pix_fmt','yuv420p','-bufsize','1835k',moviename])
 
         if ret==0:
             print "Movie created, cleaning up ..."
             for i,i_s in enumerate(arange(i0,i1+1,steps)):
-                os.remove('movie_images/img_%3.3i.png'%i)
-            os.removedirs('movie_images')
+                os.remove(dirname+os.sep+'img_%3.3i.png'%i)
+            os.removedirs(dirname)
 
     def load_diskev(self,filename="data/"):
         """
@@ -689,7 +692,7 @@ class pydisk1D:
                        data2=add_arr,i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
                        zlog=1,zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['k','w-','r-','y--'],**kwargs)
 
-    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,clevel=arange(-10,1),ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False):
+    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,clevel=None,ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False,showtitle=True):
         """
         Produces my default plot of the dust surface density.
         
@@ -734,6 +737,9 @@ class pydisk1D:
         
         contour_lines : bool
         : whether or not to print lines between the contour areas
+
+        showtitle : bool
+        : whether or not to print the snapshot time as plot title
         
         Example:
             >>> D.plot_sigma_d(133)
@@ -742,6 +748,7 @@ class pydisk1D:
         from matplotlib.pyplot import figure,loglog,title,xlabel,ylabel,\
         xlim,cm,contourf,pcolor,gca,xscale,yscale,colorbar,contour,setp,legend,rcParams
         params = rcParams.copy()
+        if clevel==None: clevel=arange(-10,1)+ceil(log10(self.sigma_d.max()/log(self.grainsizes[1]/self.grainsizes[0])))
         if fs!=None: rcParams['font.size']=fs
         #
         # check input
@@ -789,17 +796,22 @@ class pydisk1D:
             cont=contourf(self.x/1.4e13,self.grainsizes,log10(#10**clevel[0]+ 
               self.sigma_d[N*self.n_m+arange(0,self.n_m),:]/log(self.grainsizes[1]/self.grainsizes[0])),clevel,cmap=cmap,extend='both')
             cont.cmap.set_under('k')
+            for p in cont.collections: p.set_edgecolor('face')
         if plot_style=='s':
             X,Y = meshgrid(self.x,self.grainsizes)
             pcolor(X/1.4e13,Y,log10(1e-10+self.sigma_d[N*self.n_m+arange(0,self.n_m),:]/log(self.grainsizes[1]/self.grainsizes[0])))
         gca()
         if sizelimits==True:
+            lim_lines   = []
+            lim_strings = []
             if yl==None:
                 yl=array(gca().get_ylim())
                 yl[0]=max(yl[0],self.grainsizes[0])
             if self.nml['FRAG_SWITCH']==1:
-                l1,=loglog(self.x/AU,a_fr,'r-',linewidth=2)
-            l2,=loglog(self.x/AU,a_dr,'r--',linewidth=2)
+                lim_lines+=loglog(self.x/AU,a_fr,'r-',linewidth=2)
+                lim_strings+=['fragmentation barrier']
+            lim_lines+=loglog(self.x/AU,a_dr,'r--',linewidth=2)
+            lim_strings+=['drift barrier']
         if xl!=None:
             gca().set_xlim(xl)
         else:
@@ -817,6 +829,7 @@ class pydisk1D:
         ax=gca()
         pos=ax.get_position()
         cb=colorbar(shrink=0.8)
+        cb.ax.collections[0].set_edgecolor('face')
         ax.set_position([pos.x0,pos.y0,pos.size[0],pos.size[1]])
         tx = array([])
         for t in cb.ax.get_yticklabels():
@@ -847,7 +860,7 @@ class pydisk1D:
         #
         # plot the snapshot time in the title
         #
-        title('time = '+timestr+' yr',**{'color':ax_color})
+        if showtitle: title('time = '+timestr+' yr',**{'color':ax_color})
         if ax_color!='k':
             ax.xaxis.label.set_color(ax_color)
             ax.yaxis.label.set_color(ax_color)
@@ -857,8 +870,8 @@ class pydisk1D:
         # print a legend
         #
         if leg==True and sizelimits==True:
-            leg=legend((l1,l2),('fragmentation barrier','drift barrier'),loc='upper left')
-            for t in leg.get_texts(): t.set_color(ax_color) 
+            leg=legend(lim_lines,lim_strings,loc='upper left')
+            for t in leg.get_texts(): t.set_color(cb_color) 
             leg.get_frame().set_color('None')
         #
         # back to previous settings
