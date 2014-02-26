@@ -692,7 +692,7 @@ class pydisk1D:
                        data2=add_arr,i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
                        zlog=1,zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['k','w-','r-','y--'],**kwargs)
 
-    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,clevel=None,ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False,showtitle=True):
+    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,xlog=True,ylog=True,clevel=None,ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False,showtitle=True):
         """
         Produces my default plot of the dust surface density.
         
@@ -716,6 +716,12 @@ class pydisk1D:
         
         yl: list
         : y limits
+
+        xlog : bool
+        : log x axis
+        
+        ylog : bool
+        : log y axis
         
         clevel : array or list
         : contour levels for the contour plot
@@ -821,8 +827,8 @@ class pydisk1D:
         #
         # set logarithmic scales
         #
-        xscale('log')
-        yscale('log')
+        if not xlog: xscale('linear')
+        if not ylog: yscale('linear')
         #
         # draw color bar
         #
