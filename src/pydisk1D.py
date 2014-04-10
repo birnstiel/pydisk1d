@@ -225,7 +225,7 @@ class pydisk1D:
         for k in addkeys1D+addkeys2D:
             setattr(self, k, append(getattr(self,k),getattr(b,k),0))
 
-    def sigma_d_movie(self,i0=0,i1=-1,steps=1,**kwargs):
+    def sigma_d_movie(self,i0=0,i1=-1,steps=1,dpi=None,**kwargs):
         """
         This uses the other sub-routine `plot_sigma_d` to produce
         a movie of the time evolution.
@@ -241,6 +241,9 @@ class pydisk1D:
         
         steps : int
         : step size between each frame
+
+        dpi : int
+        : resolution of the image frames
         
         Examples:
         ---------
@@ -249,12 +252,13 @@ class pydisk1D:
         
         The **kwargs are passed to `plot_sigma_d
         """
-        from matplotlib.pyplot import figure,savefig,clf,close
+        from matplotlib.pyplot import figure,savefig,clf,close,rcParams
         from random import choice
         from string import ascii_letters
         import subprocess
         if i0<0: i0=0
         if i1>self.n_t or i1==-1: i1 = self.n_t - 1
+        dpi = dpi or rcParams['figure.dpi']
         #
         # check if there is already a movie_images folder
         # otherwise create one
@@ -271,7 +275,7 @@ class pydisk1D:
         fig=figure()
         for i,i_s in enumerate(arange(i0,i1+1,steps)):
             self.plot_sigma_d(i_s,fig=fig,**kwargs)
-            savefig(dirname+os.sep+'img_%3.3i.png'%i,facecolor=fig.get_facecolor())
+            savefig(dirname+os.sep+'img_%3.3i.png'%i,facecolor=fig.get_facecolor(),dpi=dpi)
             clf()
             progress_bar(float(i_s-i0)/float(i1+1-i0)*100., 'making images')
         close(fig)
