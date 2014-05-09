@@ -1,11 +1,8 @@
-from numpy import * #@UnusedWildImport
-import sys,matplotlib
-import h5py
-import re
-import glob
-import os
-from uTILities import parse_nml, dlydlx, write_nml, progress_bar
-from constants import AU,year, k_b, m_p, mu, Grav, sig_h2
+from numpy import array,append,arange,trapz,pi,zeros,ceil,sqrt,log,log10,minimum,\
+meshgrid,savetxt,isnan,interp,loadtxt,random
+import matplotlib,h5py,re,glob,os,sys
+from uTILities import parse_nml, dlydlx,write_nml,progress_bar,my_colorbar
+from constants import AU,year, k_b, m_p, mu,Grav, sig_h2
 from matplotlib.mlab import find
 from scipy.interpolate import RectBivariateSpline
 
@@ -15,7 +12,7 @@ class pydisk1D:
     results of the diskev code by Til Birnstiel.
     
     For questions and comments please write
-    to til.birnstiel@lmu.de
+    to tbirnstiel@cfa.harvard.edu
 
     Example:
         * Shortest way to get the data (data_dir is directory or file
@@ -263,7 +260,7 @@ class pydisk1D:
         # check if there is already a movie_images folder
         # otherwise create one
         #
-        dirname    = 'movie_images_'+''.join(choice(ascii_letters) for x in range(5))
+        dirname    = 'movie_images_'+''.join(choice(ascii_letters) for x in range(5))  # @UnusedVariable
         if os.path.isdir(dirname):
             print('%s folder already exists, please delete it first'%dirname)
             sys.exit(-1)
@@ -647,7 +644,7 @@ class pydisk1D:
         :    index of the snapshot, defaults to first snapshot
         
         sizelimits
-        :    wether or not to show the drift / fragmentationsize limits
+        :    wether or not to show the drift / fragmentation size limits
 
         **kwargs
         : will be passed forward to the widget
@@ -696,7 +693,7 @@ class pydisk1D:
                        data2=add_arr,i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
                        zlog=1,zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['k','w-','r-','y--'],**kwargs)
 
-    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,xlog=True,ylog=True,clevel=None,ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False,showtitle=True):
+    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,xlog=True,ylog=True,clevel=None,ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False,showtitle=True,colbar=True):
         """
         Produces my default plot of the dust surface density.
         
@@ -750,13 +747,16 @@ class pydisk1D:
 
         showtitle : bool
         : whether or not to print the snapshot time as plot title
+
+        colbar : bool
+            whether or not to show a colorbar
         
         Example:
             >>> D.plot_sigma_d(133)
 
         """
         from matplotlib.pyplot import figure,loglog,title,xlabel,ylabel,\
-        xlim,cm,contourf,pcolor,gca,xscale,yscale,colorbar,contour,setp,legend,rcParams
+        xlim,contourf,pcolor,gca,xscale,yscale,colorbar,contour,setp,legend,rcParams
         params = rcParams.copy()
         if clevel==None: clevel=arange(-10,1)+ceil(log10(self.sigma_d.max()/log(self.grainsizes[1]/self.grainsizes[0])))
         if fs!=None: rcParams['font.size']=fs
@@ -837,16 +837,19 @@ class pydisk1D:
         # draw color bar
         #
         ax=gca()
-        pos=ax.get_position()
-        cb=colorbar(shrink=0.8)
-        cb.ax.collections[0].set_edgecolor('face')
-        ax.set_position([pos.x0,pos.y0,pos.size[0],pos.size[1]])
-        tx = array([])
-        for t in cb.ax.get_yticklabels():
-            t.set_fontsize(12)
-            tx = append(tx,'$10^{'+t.get_text().replace(u'\u2212','-')+'}$')
-        cb.ax.set_yticklabels(tx[:-1],color=cb_color,fontsize=(fs or 14))
-        cb.ax.set_title('$\log_{10}\,\sigma(r,a) \mathrm{[g\,cm}^{-2}\mathrm{]}$',fontsize=(fs or 14),color=cb_color)
+        if colbar:
+            my_colorbar(gca(),logify=True,col=cb_color,fs=(fs or 14)-2,title_string='$\sigma(a)$ [g cm$^{-2}$]',doplot=lambda x: True)  # @UnusedVariable
+            if False:
+                pos=ax.get_position()
+                cb=colorbar(shrink=0.8)
+                cb.ax.collections[0].set_edgecolor('face')
+                ax.set_position([pos.x0,pos.y0,pos.size[0],pos.size[1]])
+                tx = array([])
+                for t in cb.ax.get_yticklabels():
+                    t.set_fontsize(12)
+                    tx = append(tx,'$10^{'+t.get_text().replace(u'\u2212','-').replace('$','')+'}$')
+                cb.ax.set_yticklabels(tx[:-1],color=cb_color,fontsize=(fs or 14))
+                cb.ax.set_title('$\log_{10}\,\sigma(r,a) \mathrm{[g\,cm}^{-2}\mathrm{]}$',fontsize=(fs or 14),color=cb_color)
         #
         # set axes label
         #
@@ -1198,46 +1201,39 @@ class pydisk1D:
                 #
                 val = st
         return val
-# ============================================================================
 
-    #
-    # define this function only
-    # if ipython import works
-    #
-    def_load = True
-    try:
-        from IPython import get_ipython
-    except:
-        def_load = False
-    if def_load:
-        def make_sim_interactive(self):
-            """
-            This function is to make a simulation result locally availabe in the interactive ipython/python environment.
-            Note that in order to make it work, you cannot import it but you need to execute it like %run or execfile(...)
-            """
+    def make_sim_interactive(self):
+        """
+        This function is to make a simulation result locally availabe in the interactive ipython/python environment.
+        Note that in order to make it work, you cannot import it but you need to execute it like %run or execfile(...)
+        """
+        def_load = True
+        try:
+            from IPython import get_ipython
+        except:
+            def_load = False
+        if not def_load: raise NameError('ERROR: could not import ipython, thus make_sim_interactive could not be defined')
+        #
+        # define a dictionary and fill it with the names and values of the variables
+        #
+        variables = dict()
+        attributes = dir(self)
+        for attr in attributes:
+            val = getattr(self,attr)
             #
-            # define a dictionary and fill it with the names and values of the variables
+            # load everything but methods
             #
-            variables = dict()
-            attributes = dir(self)
-            for attr in attributes:
-                val = getattr(self,attr)
-                #
-                # load everything but methods
-                #
-                if type(val).__name__ != 'instancemethod':
-                    variables[attr] = val
-            #
-            # get the workspace and load the dictionary into it
-            #
-            ns = get_ipython()
-            ns.user_ns.update(variables)
-            #
-            # make the namelist variables also global
-            #
-            if hasattr(self,'nml'): ns.user_ns.update(self.nml)
-    else:
-        print('ERROR: could not import ipython, thus make_sim_interactive could not be defined')
+            if type(val).__name__ != 'instancemethod':
+                variables[attr] = val
+        #
+        # get the workspace and load the dictionary into it
+        #
+        ns = get_ipython()
+        ns.user_ns.update(variables)
+        #
+        # make the namelist variables also global
+        #
+        if hasattr(self,'nml'): ns.user_ns.update(self.nml)
 
 def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
     """
@@ -1257,6 +1253,7 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
     J     = []
     for t in times: J += [find(d.timesteps/year>=t)[0]]
     """
+    from IPython import embed
     files=glob.glob(directory+os.sep+mask+'.mat')+glob.glob(directory+os.sep+mask+'.hdf5')
     if lucasgrids=='':
         lucasgrids=directory;
@@ -1279,7 +1276,6 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
             grainsizes_in = d.grainsizes
             RHO_S         = d.nml['RHO_S']
             T_in          = d.T
-            year          = d.year
             timesteps_1   = d.timesteps
             grains        = len(grainsizes_in)
             sig_in        = sigma_d_1[j*grains+arange(grains),:]/log(grainsizes_in[1]/grainsizes_in[0])            
@@ -1304,11 +1300,9 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
             sig_out[0:find(grainsizes_out<=grainsizes_in[0])[-1],:] = 1e-100
             if any(isnan(sig_out)):
                 print('NaN detected in sig_out')
-                from IPython import embed
                 embed()
             if any(sig_out<0):
                 print('negative number detected in sig_out')
-                from IPython import embed #@Reimport
                 embed()
             #
             # renormalize:
@@ -1331,7 +1325,6 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
             perc_diff = (m_out-m_in)/m_in*100
             if abs(perc_diff)>10.0:
                 print('ERROR: mass difference too large: %2.2g %%'%perc_diff)
-                from IPython import embed #@Reimport
                 embed()
             else:
                 print('mass difference: %2.2g %%'%perc_diff)
@@ -1342,11 +1335,9 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
             N = array([S/(4.*pi/3.*RHO_S*grainsizes_out**4) for S in sig_out.transpose()]).transpose()
             if any(isnan(N)):
                 print('Error: NaN in N detected')
-                from IPython import embed #@Reimport
                 embed()
             if any(N<0.0):
                 print('Error: negative number in N detected')
-                from IPython import embed #@Reimport
                 embed()
             # 
             # write out the result in one column
