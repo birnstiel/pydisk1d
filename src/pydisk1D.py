@@ -177,7 +177,7 @@ class pydisk1D:
             'kappa_r_r',
             'kappa_p_r']
         for k in eqkeys:
-            if all(getattr(self,k)!=getattr(self,k)):
+            if any(array(getattr(self,k)!=getattr(self,k),ndmin=1)):
                 print('WARNING: key \'%s\' is not identical'%k)
         #
         # merge the 0D arrays
