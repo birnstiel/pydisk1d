@@ -1058,7 +1058,7 @@ class pydisk1D:
         print(' ... DONE')
         
     # -----------------------------------------------------------------------------
-    def write_setup(self,it):
+    def write_setup(self,it,overwrite=None):
         """
         This function writes out the setup files to continue a simulation from a given snapshot
         
@@ -1067,6 +1067,14 @@ class pydisk1D:
         
         it
         :    snapshot index
+        
+        Keyword:
+        --------
+        
+        overwrite = [*None* | bool]
+            if true:    always overwrite
+            if false:   never overwrite
+            if None:    ask
         
         Output:
         -------
@@ -1080,8 +1088,11 @@ class pydisk1D:
         simname = self.data_dir
         simname = re.sub('^data_','',simname)
         simname = re.sub('^in_','',simname)
-        if os.path.isdir(dirname):
+        if os.path.isdir(dirname) and overwrite!=True:
             inp = None
+            if overwrite==False:
+                print('output directory exists, aborting')
+                return
             while inp not in ['','y','n']:
                 inp=raw_input('\'%s\' already exists, overwrite [Y/n] '%dirname).lower()
                 if inp=='n': 
