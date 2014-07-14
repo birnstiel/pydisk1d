@@ -1088,16 +1088,17 @@ class pydisk1D:
         simname = self.data_dir
         simname = re.sub('^data_','',simname)
         simname = re.sub('^in_','',simname)
-        if os.path.isdir(dirname) and overwrite!=True:
-            inp = None
-            if overwrite==False:
-                print('output directory exists, aborting')
-                return
-            while inp not in ['','y','n']:
-                inp=raw_input('\'%s\' already exists, overwrite [Y/n] '%dirname).lower()
-                if inp=='n': 
-                    print('operation cancelled')
+        if os.path.isdir(dirname):
+            if overwrite!=True:
+                inp = None
+                if overwrite==False:
+                    print('output directory exists, aborting')
                     return
+                while inp not in ['','y','n']:
+                    inp=raw_input('\'%s\' already exists, overwrite [Y/n] '%dirname).lower()
+                    if inp=='n': 
+                        print('operation cancelled')
+                        return
         else:
             os.mkdir(dirname)
         #
