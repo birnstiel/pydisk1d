@@ -480,7 +480,7 @@ class pydisk1D:
         # close the file
         #
         f.close()
-        print "... Done"
+        print " ... Done!"
 
     def get_m_gas(self):
         """
@@ -1000,7 +1000,8 @@ class pydisk1D:
         #
         filename = data_dir.replace('/','')+".hdf5"
         f = h5py.File(filename,mode='w')
-        print "saving as",filename
+        sys.stdout.write('saving as '+filename)
+        sys.stdout.flush()
         #
         # write data into file
         #
@@ -1055,7 +1056,7 @@ class pydisk1D:
         # close file
         #
         f.close()
-        print(' ... DONE')
+        print(' ... Done!')
         
     # -----------------------------------------------------------------------------
     def write_setup(self,it,overwrite=None):
