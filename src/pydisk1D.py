@@ -759,7 +759,7 @@ class pydisk1D:
         xlim,contourf,pcolor,gca,xscale,yscale,colorbar,contour,setp,legend,rcParams
         params = rcParams.copy()
         if clevel==None: clevel=arange(-10,1)+ceil(log10(self.sigma_d.max()/log(self.grainsizes[1]/self.grainsizes[0])))
-        if fs!=None: rcParams['font.size']=fs
+        if fs is not None: rcParams['font.size']=fs
         #
         # check input
         #
@@ -822,11 +822,11 @@ class pydisk1D:
                 lim_strings+=['fragmentation barrier']
             lim_lines+=loglog(self.x/AU,a_dr,'r--',linewidth=2)
             lim_strings+=['drift barrier']
-        if xl!=None:
+        if xl is not None:
             gca().set_xlim(xl)
         else:
             xlim(self.x[0]/AU,self.x[-1]/AU)
-        if yl!=None:
+        if yl is not None:
             gca().set_ylim(yl)
         #
         # set logarithmic scales
@@ -961,16 +961,16 @@ class pydisk1D:
         n_r = self.n_r
         n_m = self.n_m
         n_t = self.n_t
-        if self.alpha      !=None: self.alpha      = self.alpha.reshape(-1,n_r)
-        if self.alpha_dead !=None: self.alpha_dead = self.alpha_dead.reshape(-1,n_r)
-        if self.nu         !=None: self.nu         = self.nu.reshape(n_t,n_r)
-        if self.sigma_dead !=None: self.sigma_dead = self.sigma_dead.reshape(-1,n_r)
-        if self.sigma_g    !=None: self.sigma_g    = self.sigma_g.reshape(-1,n_r)
-        if self.sigma_d    !=None: self.sigma_d    = self.sigma_d.reshape(n_t*n_m,n_r)
-        if self.T          !=None: self.T          = self.T.reshape(n_t,n_r)
-        if self.v_gas      !=None: self.v_gas      = self.v_gas.reshape(n_t,n_r)
-        if self.v_gas_dead !=None: self.v_gas_dead = self.v_gas_dead.reshape(n_t,n_r)
-        if self.v_dust     !=None: self.v_dust     = self.v_dust.reshape(n_t*n_m,n_r)
+        if self.alpha      is not None: self.alpha      = self.alpha.reshape(-1,n_r)
+        if self.alpha_dead is not None: self.alpha_dead = self.alpha_dead.reshape(-1,n_r)
+        if self.nu         is not None: self.nu         = self.nu.reshape(n_t,n_r)
+        if self.sigma_dead is not None: self.sigma_dead = self.sigma_dead.reshape(-1,n_r)
+        if self.sigma_g    is not None: self.sigma_g    = self.sigma_g.reshape(-1,n_r)
+        if self.sigma_d    is not None: self.sigma_d    = self.sigma_d.reshape(n_t*n_m,n_r)
+        if self.T          is not None: self.T          = self.T.reshape(n_t,n_r)
+        if self.v_gas      is not None: self.v_gas      = self.v_gas.reshape(n_t,n_r)
+        if self.v_gas_dead is not None: self.v_gas_dead = self.v_gas_dead.reshape(n_t,n_r)
+        if self.v_dust     is not None: self.v_dust     = self.v_dust.reshape(n_t*n_m,n_r)
         #
         # convert the integer variables from float to int
         #
@@ -1048,7 +1048,7 @@ class pydisk1D:
         #
         # save the nml
         #
-        if self.nml!=None:
+        if self.nml is not None:
             grp=f.create_group("nml")
             for key,val in self.nml.iteritems():
                 grp.create_dataset(key, data=val)
@@ -1541,4 +1541,4 @@ def setup_diskev(sim_name,R,T,sig_g,alpha,inputvars,sig_d=None,savedir='.',res=1
         savetxt(savedir+os.sep+'gas_input_'+  NAME+'.dat', sig_g, delimiter=' ')
         if nml['TEMPERATURE_METHOD']==0: savetxt(savedir+os.sep+'T_input_'+    NAME+'.dat', T,     delimiter=' ')
         savetxt(savedir+os.sep+'alpha_input_'+NAME+'.dat', alpha, delimiter=' ')
-        if sig_d!=None: savetxt(savedir+os.sep+'dust_input_'+NAME+'.dat', sig_d, delimiter=' ')
+        if sig_d is not None: savetxt(savedir+os.sep+'dust_input_'+NAME+'.dat', sig_d, delimiter=' ')
