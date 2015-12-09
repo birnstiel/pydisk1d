@@ -324,27 +324,25 @@ class pydisk1D:
         #
         sys.stdout.write("loading from %s"%filename)
         sys.stdout.flush()
-        f = h5py.File(filename,'r')
         #
         # load data from file
         #
         if filename.split('.')[-1]=='mat':
+            import scipy.io
+            f = scipy.io.loadmat(filename)
             #
             # the data from the .mat files needs to be transposed 
             #
-            self.data_dir             = f['dir'+ending][...]
-            dummy=''
-            for i in self.data_dir: dummy+=chr(i)
-            self.data_dir = dummy
+            self.data_dir             = f['dir'+ending][0]
             self.n_m                  = int(f['grains'][...])
 #            self.D_grain1             = f['D_grain1'+ending][...].squeeze()
-            self.T                    = f['T'+ending][...].transpose()
+            self.T                    = f['T'+ending][...]
             self.accretion_dust       = f['accretion_dust'+ending][...].squeeze()
             self.accretion_dust_e     = f['accretion_dust_e'+ending][...].squeeze()
             self.accretion_gas        = f['accretion_gas'+ending][...].squeeze()
-            self.alpha                = f['alpha'+ending][...].transpose()
-            self.alpha_dead           = f['alpha_dead'+ending][...].transpose()
-            self.d_evap               = f['d_evap'+ending][...].transpose()
+            self.alpha                = f['alpha'+ending][...]
+            self.alpha_dead           = f['alpha_dead'+ending][...]
+            self.d_evap               = f['d_evap'+ending][...]
             #self.dust_flux        = f['dust_flux'+ending][...]
             self.dust_flux_o          = f['dust_flux_o'+ending][...].squeeze()
             self.dust_flux_o_e        = f['dust_flux_o_e'+ending][...].squeeze()
@@ -358,21 +356,21 @@ class pydisk1D:
             self.m_star               = f['m_star'+ending][...].squeeze()
             self.n_r                  = int(f['n_r'][...])
             self.n_t                  = int(f['n_t'][...])
-            self.nu                   = f['nu'+ending][...].transpose()
+            self.nu                   = f['nu'+ending][...]
             self.peak_position        = f['peak_position'+ending][...].squeeze()
             self.r_centri             = f['r_centri'+ending][...].squeeze()
             self.r_min                = f['r_min'+ending][...].squeeze()
             self.r_snow               = f['r_snow'+ending][...].squeeze()
             self.sig_dot_t            = f['sig_dot_t'+ending][...].squeeze()
-            self.sigma_coag           = f['sigma_coag'+ending][...].transpose()
-            self.sigma_d              = f['sigma_d'+ending][...].transpose()
-            self.sigma_dead           = f['sigma_dead'+ending][...].transpose()
-            self.sigma_g              = f['sigma_g'+ending][...].transpose()
+            self.sigma_coag           = f['sigma_coag'+ending][...]
+            self.sigma_d              = f['sigma_d'+ending][...]
+            self.sigma_dead           = f['sigma_dead'+ending][...]
+            self.sigma_g              = f['sigma_g'+ending][...]
             self.steps                = f['steps'+ending][...].squeeze()
             self.timesteps            = f['timesteps'+ending][...].squeeze()
-            self.v_dust               = f['v_dust'+ending][...].transpose()
-            self.v_gas                = f['v_gas'+ending][...].transpose()
-            self.v_gas_dead           = f['v_gas_dead'+ending][...].transpose()
+            self.v_dust               = f['v_dust'+ending][...]
+            self.v_gas                = f['v_gas'+ending][...]
+            self.v_gas_dead           = f['v_gas_dead'+ending][...]
             self.x                    = f['x'+ending][...].squeeze()
             self.x05                  = f['x05'+ending][...].squeeze()
             #
@@ -384,6 +382,7 @@ class pydisk1D:
                 if key==key.upper() and len(f[key][...])==1:
                     self.nml[key]=float(f[key][...])
         else:
+            f = h5py.File(filename,'r')
             #
             # all the try/except stuff is for reading in an file which lacks most of the variables
             # but which can be used as input of the vertical structure simulations via vertical_structure_from_data
@@ -479,7 +478,7 @@ class pydisk1D:
         #
         # close the file
         #
-        f.close()
+        if hasattr(f,'close'): f.close()
         print " ... Done!"
 
     def get_m_gas(self):
