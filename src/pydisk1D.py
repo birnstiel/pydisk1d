@@ -1,5 +1,5 @@
 from numpy import array,append,arange,trapz,pi,zeros,ceil,sqrt,log,log10,minimum,\
-meshgrid,savetxt,isnan,interp,loadtxt,random
+meshgrid,savetxt,isnan,interp,loadtxt,random,ndarray
 import matplotlib,h5py,re,glob,os,sys
 from uTILities import parse_nml, dlydlx,write_nml,progress_bar,my_colorbar
 from constants import AU,year, k_b, m_p, mu,Grav, sig_h2
@@ -614,27 +614,68 @@ class pydisk1D:
                            ylim=[1e-4,1e4],xlabel='r[AU]',i_start=N,
                            ylabel='$\Sigma_g$ [g cm $^{-2}$]')
 
-    def plot_sigma_widget(self,N=0):
+    def plot_sigma_widget(self,N=0,ispec=None,**kwargs):
         """ 
         Produces a plot of the gas and total dust surface density at snapshot number N.
-        Arguments:
-            N   index of the snapshot, defaults to first snapshot
+        
+        Keywords:
+        ---------
+        
+        N : int
+        : index of the snapshot, defaults to first snapshot
+        
+        ispec : index or array of indices or array of arrays of indices
+        :   int:             plot only this surface density
+            array of ints:   plot these surface densities
+            array of arrays: sum up over every array each sum
+            
+        **kwargs are passed to widget.plotter, some are set to default values if not given
+        
         Example:
-            >>> D.plot_sigma_widget(133)
+        --------
+        >>> D.plot_sigma_widget(133)
+        
+        Reproduce plot from Andrews et al. 2014, ApJ
+        
+        i0=abs(d.grainsizes-0.5e-4).argmin()
+        i1=abs(d.grainsizes-5e-4).argmin()
+        i2=abs(d.grainsizes-500e-4).argmin()
+        i3=abs(d.grainsizes-5).argmin()
+
+        d.plot_sigma_widget(N=244,ispec=[arange(i0,i1+1),arange(i2,i3+1)],ylim=[5e-4,4],xlim=[70,445],xlog=False,ylog=True,lstyle=['r-','g-','c-'])
         """ 
-        import widget as widget #@UnresolvedImport
+        import widget
         #
         # plot gas surface density at the given snapshot 'N' 
         #
         if (N+1>self.sigma_g.shape[0]):
             N=0;
-        widget.plotter(x=self.x/self.AU,data=self.sigma_g,data2=self.get_sigma_dust_total(),
-                           times=self.timesteps/self.year,xlog=1,ylog=1,
-                           xlim=[self.x[0]/self.AU,self.x[-1]/self.AU],
-                           ylim=[1e-4,1e4],xlabel='r[AU]',i_start=N,
-                           ylabel='$\Sigma$ [g cm $^{-2}$]')
+            
+        if ispec is None:
+            data2 = self.get_sigma_dust_total()
+        if type(ispec) == int:
+            data2 = self.sigma_d[arange(self.n_t)*self.n_m+ispec,:]
+        if type(ispec) in [list, ndarray]:
+            data2 = []
+            for i in ispec:
+                if type(i)==int:
+                    data2 += [self.sigma_d[arange(self.n_t)*self.n_m+ispec,:]]
+                else:
+                    data2 += [array([self.sigma_d[[j+it*self.n_m for j in i],:].sum(0) for it in range(self.n_t)])]
+        #
+        # set default values
+        # 
+        if 'xlim'   not in kwargs.keys(): kwargs['xlim']   = [self.x[0]/self.AU,self.x[-1]/self.AU]
+        if 'ylim'   not in kwargs.keys(): kwargs['ylim']   = [1e-4,1e4]
+        if 'xlabel' not in kwargs.keys(): kwargs['xlabel'] = 'r[AU]'
+        if 'ylabel' not in kwargs.keys(): kwargs['ylabel'] = '$\Sigma$ [g cm $^{-2}$]'
+        if 'xlog'   not in kwargs.keys(): kwargs['xlog']   = 1
+        if 'ylog'   not in kwargs.keys(): kwargs['ylog']   = 1
+            
+        widget.plotter(x=self.x/self.AU,data=self.sigma_g,data2=data2,
+                           times=self.timesteps/self.year,i_start=N,**kwargs)
 
-    def plot_sigma_d_widget(self,N=0,sizelimits=False,**kwargs):
+    def plot_sigma_d_widget(self,N=0,sizelimits=False,stokesaxis=False,**kwargs):
         """ 
         Produces a plot of the 2D dust surface density at snapshot number N.
         
@@ -644,14 +685,20 @@ class pydisk1D:
         
         sizelimits
         :    wether or not to show the drift / fragmentation size limits
+        
+        stokesaxis : bool
+        :    if true, use stokes number instead of particle size on y-axis
 
         **kwargs
         : will be passed forward to the widget
         
         Example:
+        --------
+        
             >>> D.plot_sigma_d_widget(200)
         """ 
         import widget
+        from uTILities import get_St, progress_bar
         add_arr = []
         if sizelimits==True:
             RHO_S     = self.nml['RHO_S']
@@ -687,12 +734,28 @@ class pydisk1D:
         if (N+1>self.sigma_g.shape[0]):
             N=0;
         gsf=log(self.grainsizes[1]/self.grainsizes[0])
-        widget.plotter(x=self.x/self.AU,y=self.grainsizes,
+        #
+        # convert to stokes number as y-axis
+        # 
+        if stokesaxis:
+            R,_ = meshgrid(self.x,self.grainsizes)
+            Y   = zeros([self.n_t*self.n_m,self.n_r])
+            for it in range(self.n_t):
+                progress_bar(it/(self.n_t-1.)*100,'calculating St-axis')
+                for ir in range(self.n_r):
+                    Y[it*self.n_m+arange(self.n_m),ir] = get_St(self.grainsizes, self.T[it,ir], self.sigma_g[it,ir], self.x[ir], self.m_star[it], rho_s=self.nml['RHO_S'],Stokesregime=self.nml['STOKES_REGIME'])
+        else:
+            R = self.x
+            Y = self.grainsizes
+        #
+        # call the widget
+        #
+        widget.plotter(x=R/self.AU,y=Y,
                        data=self.sigma_d/gsf,
                        data2=add_arr,i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
                        zlog=1,zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['k','w-','r-','y--'],**kwargs)
 
-    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,xlog=True,ylog=True,clevel=None,ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False,showtitle=True,colbar=True):
+    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,xlog=True,ylog=True,clevel=None,ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False,showtitle=True,colbar=True,time=None):
         """
         Produces my default plot of the dust surface density.
         
@@ -749,6 +812,9 @@ class pydisk1D:
 
         colbar : bool
             whether or not to show a colorbar
+            
+        time : float
+        : if not none, plot the snapshot at that time (or the closest one)
         
         Example:
             >>> D.plot_sigma_d(133)
@@ -757,6 +823,7 @@ class pydisk1D:
         from matplotlib.pyplot import figure,loglog,title,xlabel,ylabel,\
         xlim,contourf,pcolor,gca,xscale,yscale,colorbar,contour,setp,legend,rcParams
         params = rcParams.copy()
+        if time is not None: N = abs(self.timesteps/year-time).argmin()
         if clevel==None: clevel=arange(-10,1)+ceil(log10(self.sigma_d.max()/log(self.grainsizes[1]/self.grainsizes[0])))
         if fs is not None: rcParams['font.size']=fs
         #
@@ -779,7 +846,7 @@ class pydisk1D:
         if sizelimits==True:
             RHO_S     = self.nml['RHO_S']
             sigma_d   = sum(self.sigma_d[N*self.n_m+arange(self.n_m),:],0)
-            fudge_fr = 0.37
+            #fudge_fr = 0.37
             fudge_dr = 0.55
             gamma = dlydlx(self.x,self.sigma_g[N])+0.5*dlydlx(self.x,self.T[N])-1.5
             #
@@ -792,8 +859,8 @@ class pydisk1D:
             b     = 3.*self.alpha[N]*k_b*self.T[N]/mu/m_p/self.nml['V_FRAG']**2
             a_fr  = self.sigma_g[N]/(pi*RHO_S)*(b-sqrt(b**2-4.))
             a_dr  = fudge_dr/(self.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*self.x**2.*(Grav*self.m_star[N]/self.x**3)/(abs(gamma)*(k_b*self.T[N]/mu/m_p))
-            NN     = 0.5
-            a_df  = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*self.nml['V_FRAG']*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*k_b*self.T[N]/mu/m_p*(1.-NN)) #@UnusedVariable
+            #NN     = 0.5
+            #a_df  = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*self.nml['V_FRAG']*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*k_b*self.T[N]/mu/m_p*(1.-NN)) #@UnusedVariable
         if fig==None:
             fig=figure()
         figure(fig.number)
