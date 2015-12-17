@@ -1,5 +1,5 @@
 from numpy import array,append,arange,trapz,pi,zeros,ceil,sqrt,log,log10,minimum,\
-meshgrid,savetxt,isnan,interp,loadtxt,random,ndarray
+meshgrid,savetxt,isnan,interp,loadtxt,random,ndarray,sum
 import matplotlib,h5py,re,glob,os,sys
 from uTILities import parse_nml, dlydlx,write_nml,progress_bar,my_colorbar
 from constants import AU,year, k_b, m_p, mu,Grav, sig_h2
@@ -749,6 +749,13 @@ class pydisk1D:
                 progress_bar(it/(self.n_t-1.)*100,'calculating St-axis')
                 for ir in range(self.n_r):
                     Y[it*self.n_m+arange(self.n_m),ir] = get_St(self.grainsizes, self.T[it,ir], self.sigma_g[it,ir], self.x[ir], self.m_star[it], rho_s=self.nml['RHO_S'],Stokesregime=self.nml['STOKES_REGIME'])
+            #
+            # now the size limits:
+            # they have all been derived for epstein drag, so let's revert this
+            #
+            if sizelimits:
+                for i,limit in enumerate(add_arr):
+                    add_arr[i] = limit*RHO_S/self.sigma_g*pi/2.0
         else:
             R = self.x
             Y = self.grainsizes
