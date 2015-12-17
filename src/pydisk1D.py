@@ -89,6 +89,7 @@ class pydisk1D:
         self.d_evap              = None
         self.m_dot_star          = None
         self.ttable              = None
+        self.stored_data         = None
 
         if data_dir=='':
             print "no data directory given, will not read data"
@@ -383,90 +384,94 @@ class pydisk1D:
                     self.nml[key]=float(f[key][...])
         else:
             f = h5py.File(filename,'r')
-            #
-            # all the try/except stuff is for reading in an file which lacks most of the variables
-            # but which can be used as input of the vertical structure simulations via vertical_structure_from_data
-            #
-            try: self.data_dir         	  = str(f['data_dir'][...])
-            except: pass
-            try: self.n_m              	  = f['n_m'][...]
-            except: pass
-            try: self.D_grain1             = f['D_grain1'][...]
-            except: pass
-            try: self.T                    = f['T'][...]
-            except: pass
-            try: self.accretion_dust       = f['accretion_dust'][...]
-            except: pass
-            try: self.accretion_dust_e     = f['accretion_dust_e'][...]
-            except: pass
-            try: self.accretion_gas        = f['accretion_gas'][...]
-            except: pass
-            try: self.alpha                = f['alpha'][...]
-            except: pass
-            try: self.alpha_dead           = f['alpha_dead'][...]
-            except: pass
-            try: self.d_evap               = f['d_evap'][...]
-            except: pass
-            #try: self.dust_flux        = f['dust_flux'][...]
-            #except: pass
-            try: self.dust_flux_o          = f['dust_flux_o'][...]
-            except: pass
-            try: self.dust_flux_o_e        = f['dust_flux_o_e'][...]
-            except: pass
-            try: self.fallen_disk_mass     = f['fallen_disk_mass'][...]
-            except: pass
-            try: self.flim                 = f['flim'][...]
-            except: pass
-            try: self.flim_dead            = f['flim_dead'][...]
-            except: pass
-            try: self.gas_flux_o           = f['gas_flux_o'][...]
-            except: pass
-            try: self.grainsizes           = f['grainsizes'][...]
-            except: pass
-            try: self.m_dot_star           = f['m_dot_star'][...]
-            except: pass
-            try: self.m_grid               = f['m_grid'][...]
-            except: pass
-            try: self.m_star               = f['m_star'][...]
-            except: pass
-            try: self.n_r                  = f['n_r'][...]
-            except: pass
-            try: self.n_t                  = f['n_t'][...]
-            except: pass
-            try: self.nu                   = f['nu'][...]
-            except: pass
-            try: self.peak_position        = f['peak_position'][...]
-            except: pass
-            try: self.r_centri             = f['r_centri'][...]
-            except: pass
-            try: self.r_min                = f['r_min'][...]
-            except: pass
-            try: self.r_snow               = f['r_snow'][...]
-            except: pass
-            try: self.sig_dot_t            = f['sig_dot_t'][...]
-            except: pass
-            try: self.sigma_coag           = f['sigma_coag'][...]
-            except: pass
-            try: self.sigma_d              = f['sigma_d'][...]
-            except: pass
-            try: self.sigma_dead           = f['sigma_dead'][...]
-            except: pass
-            try: self.sigma_g              = f['sigma_g'][...]
-            except: pass
-            try: self.steps                = f['steps'][...]
-            except: pass
-            try: self.timesteps            = f['timesteps'][...]
-            except: pass
-            try: self.v_dust               = f['v_dust'][...]
-            except: pass
-            try: self.v_gas                = f['v_gas'][...]
-            except: pass
-            try: self.v_gas_dead           = f['v_gas_dead'][...]
-            except: pass
-            try: self.x                    = f['x'][...]
-            except: pass
-            try: self.x05                  = f['x05'][...]
-            except: pass
+            if 'stored_data' in f.keys():
+                for varname in f['stored_data'][()]:
+                    setattr(self,varname,f[varname][()])
+            else:
+                #
+                # all the try/except stuff is for reading in an file which lacks most of the variables
+                # but which can be used as input of the vertical structure simulations via vertical_structure_from_data
+                #
+                try: self.data_dir         	  = str(f['data_dir'][...])
+                except: pass
+                try: self.n_m              	  = f['n_m'][...]
+                except: pass
+                try: self.D_grain1             = f['D_grain1'][...]
+                except: pass
+                try: self.T                    = f['T'][...]
+                except: pass
+                try: self.accretion_dust       = f['accretion_dust'][...]
+                except: pass
+                try: self.accretion_dust_e     = f['accretion_dust_e'][...]
+                except: pass
+                try: self.accretion_gas        = f['accretion_gas'][...]
+                except: pass
+                try: self.alpha                = f['alpha'][...]
+                except: pass
+                try: self.alpha_dead           = f['alpha_dead'][...]
+                except: pass
+                try: self.d_evap               = f['d_evap'][...]
+                except: pass
+                #try: self.dust_flux        = f['dust_flux'][...]
+                #except: pass
+                try: self.dust_flux_o          = f['dust_flux_o'][...]
+                except: pass
+                try: self.dust_flux_o_e        = f['dust_flux_o_e'][...]
+                except: pass
+                try: self.fallen_disk_mass     = f['fallen_disk_mass'][...]
+                except: pass
+                try: self.flim                 = f['flim'][...]
+                except: pass
+                try: self.flim_dead            = f['flim_dead'][...]
+                except: pass
+                try: self.gas_flux_o           = f['gas_flux_o'][...]
+                except: pass
+                try: self.grainsizes           = f['grainsizes'][...]
+                except: pass
+                try: self.m_dot_star           = f['m_dot_star'][...]
+                except: pass
+                try: self.m_grid               = f['m_grid'][...]
+                except: pass
+                try: self.m_star               = f['m_star'][...]
+                except: pass
+                try: self.n_r                  = f['n_r'][...]
+                except: pass
+                try: self.n_t                  = f['n_t'][...]
+                except: pass
+                try: self.nu                   = f['nu'][...]
+                except: pass
+                try: self.peak_position        = f['peak_position'][...]
+                except: pass
+                try: self.r_centri             = f['r_centri'][...]
+                except: pass
+                try: self.r_min                = f['r_min'][...]
+                except: pass
+                try: self.r_snow               = f['r_snow'][...]
+                except: pass
+                try: self.sig_dot_t            = f['sig_dot_t'][...]
+                except: pass
+                try: self.sigma_coag           = f['sigma_coag'][...]
+                except: pass
+                try: self.sigma_d              = f['sigma_d'][...]
+                except: pass
+                try: self.sigma_dead           = f['sigma_dead'][...]
+                except: pass
+                try: self.sigma_g              = f['sigma_g'][...]
+                except: pass
+                try: self.steps                = f['steps'][...]
+                except: pass
+                try: self.timesteps            = f['timesteps'][...]
+                except: pass
+                try: self.v_dust               = f['v_dust'][...]
+                except: pass
+                try: self.v_gas                = f['v_gas'][...]
+                except: pass
+                try: self.v_gas_dead           = f['v_gas_dead'][...]
+                except: pass
+                try: self.x                    = f['x'][...]
+                except: pass
+                try: self.x05                  = f['x05'][...]
+                except: pass
             #
             # now load the namelist variables
             #
@@ -988,6 +993,7 @@ class pydisk1D:
         # reformat it to end with a slash
         #
         data_dir=data_dir+'/';
+        self.stored_data = ['stored_data','data_dir']
         #
         # get the list of files and iterate through them
         #
@@ -1006,6 +1012,7 @@ class pydisk1D:
             with open(infile) as fid:
                 try:
                     setattr(self,varname,array(fid.read().strip().split(),dtype='float'))
+                    self.stored_data+=[varname]
                 except:
                     print('ERROR: unable to read data for varialbe `%s`'%varname)
                     #raise Exception('unable to read in variable')
@@ -1014,13 +1021,14 @@ class pydisk1D:
         #
         if os.path.isfile(data_dir+"usedinput.nml"):
             print "    reading namelist"
-            self.nml = parse_nml(data_dir+"usedinput.nml")
+            self.nml          = parse_nml(data_dir+"usedinput.nml")
         #
         # now get some constants
         #
         self.n_r     = len(self.x)
         self.n_t     = len(self.timesteps)
         self.n_m     = len(self.m_grid)
+        self.stored_data += ['n_r','n_t','n_m']
         #
         # reformat the variables
         #
@@ -1071,46 +1079,13 @@ class pydisk1D:
         #
         # write data into file
         #
-        if self.D_grain1 is not None :         f.create_dataset('D_grain1',         compression=4, data=self.D_grain1)
-        if self.T is not None :                f.create_dataset('T',                compression=4, data=self.T)
-        if self.accretion_dust is not None :   f.create_dataset('accretion_dust',   compression=4, data=self.accretion_dust)
-        if self.accretion_dust_e is not None : f.create_dataset('accretion_dust_e', compression=4, data=self.accretion_dust_e)
-        if self.accretion_gas is not None :    f.create_dataset('accretion_gas',    compression=4, data=self.accretion_gas)
-        if self.alpha is not None :            f.create_dataset('alpha',            compression=4, data=self.alpha)
-        if self.alpha_dead is not None :       f.create_dataset('alpha_dead',       compression=4, data=self.alpha_dead)
-        if self.d_evap is not None :           f.create_dataset('d_evap',           compression=4, data=self.d_evap)
-        if self.data_dir is not None :         f.create_dataset('data_dir',                        data=self.data_dir)
-        #if self.dust_flux is not None :         f.create_dataset('dust_flux',        compression=4, data=self.dust_flux)
-        if self.dust_flux_o is not None :      f.create_dataset('dust_flux_o',      compression=4, data=self.dust_flux_o)
-        if self.dust_flux_o_e is not None :    f.create_dataset('dust_flux_o_e',    compression=4, data=self.dust_flux_o_e)
-        if self.fallen_disk_mass is not None : f.create_dataset('fallen_disk_mass', compression=4, data=self.fallen_disk_mass)
-        if self.flim is not None :             f.create_dataset('flim',             compression=4, data=self.flim)
-        if self.flim_dead is not None :        f.create_dataset('flim_dead',        compression=4, data=self.flim_dead)
-        if self.gas_flux_o is not None :       f.create_dataset('gas_flux_o',       compression=4, data=self.gas_flux_o)
-        if self.grainsizes is not None :       f.create_dataset('grainsizes',       compression=4, data=self.grainsizes)
-        if self.m_dot_star is not None :       f.create_dataset('m_dot_star',       compression=4, data=self.m_dot_star)
-        if self.m_grid is not None :           f.create_dataset('m_grid',           compression=4, data=self.m_grid)
-        if self.m_star is not None :           f.create_dataset('m_star',           compression=4, data=self.m_star)
-        if self.n_m is not None :              f.create_dataset('n_m',                             data=self.n_m)
-        if self.n_r is not None :              f.create_dataset('n_r',                             data=self.n_r)
-        if self.n_t is not None :              f.create_dataset('n_t',                             data=self.n_t)
-        if self.nu is not None :               f.create_dataset('nu',               compression=4, data=self.nu)
-        if self.peak_position is not None :    f.create_dataset('peak_position',    compression=4, data=self.peak_position)
-        if self.r_centri is not None :         f.create_dataset('r_centri',         compression=4, data=self.r_centri)
-        if self.r_min is not None :            f.create_dataset('r_min',            compression=4, data=self.r_min)
-        if self.r_snow is not None :           f.create_dataset('r_snow',           compression=4, data=self.r_snow)
-        if self.sig_dot_t is not None :        f.create_dataset('sig_dot_t',        compression=4, data=self.sig_dot_t)
-        if self.sigma_coag is not None :       f.create_dataset('sigma_coag',       compression=4, data=self.sigma_coag)
-        if self.sigma_d is not None :          f.create_dataset('sigma_d',          compression=4, data=self.sigma_d)
-        if self.sigma_dead is not None :       f.create_dataset('sigma_dead',       compression=4, data=self.sigma_dead)
-        if self.sigma_g is not None :          f.create_dataset('sigma_g',          compression=4, data=self.sigma_g)
-        if self.steps is not None :            f.create_dataset('steps',            compression=4, data=self.steps)
-        if self.timesteps is not None :        f.create_dataset('timesteps',        compression=4, data=self.timesteps)
-        if self.v_dust is not None :           f.create_dataset('v_dust',           compression=4, data=self.v_dust)
-        if self.v_gas is not None :            f.create_dataset('v_gas',            compression=4, data=self.v_gas)
-        if self.v_gas_dead is not None :       f.create_dataset('v_gas_dead',       compression=4, data=self.v_gas_dead)
-        if self.x is not None :                f.create_dataset('x',                compression=4, data=self.x)
-        if self.x05 is not None :              f.create_dataset('x05',              compression=4, data=self.x05)
+        for dataname in self.stored_data:
+            data = getattr(self,dataname)
+            if data is not None :
+                if type(data) in [int,str,float]:
+                    f.create_dataset(dataname, data=data)
+                else:
+                    f.create_dataset(dataname, data=data, compression=4)
         #
         # save the nml
         #
