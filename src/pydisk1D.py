@@ -1,7 +1,7 @@
 from numpy import array,append,arange,trapz,pi,zeros,ceil,sqrt,log,log10,minimum,\
 meshgrid,savetxt,isnan,interp,loadtxt,random,ndarray,sum
 import matplotlib,h5py,re,glob,os,sys
-from uTILities import parse_nml, dlydlx,write_nml,progress_bar,my_colorbar
+from uTILities import parse_nml, dlydlx,write_nml,my_colorbar
 from constants import AU,year, k_b, m_p, mu,Grav, sig_h2
 from matplotlib.mlab import find
 from scipy.interpolate import RectBivariateSpline
@@ -30,7 +30,7 @@ class pydisk1D:
             >>> D.load_diskev('data.hdf5')
     """
 
-    def __init__(self,data_dir=""):
+    def __init__(self,data_dir="",**kwargs):
         """ 
         The initialization routine. Without argument, nothing happens.
         With argument, a directory or file is already loaded.
@@ -121,7 +121,7 @@ class pydisk1D:
                 elif m_file_exist:
                     self.load_diskev(filename+".mat")
             elif folder_exist:
-                self.read_diskev(data_dir)
+                self.read_diskev(data_dir,**kwargs)
             else:
                 raise Exception('Input error', 'Neither file nor folder to read data was found!') 
         #
@@ -251,8 +251,9 @@ class pydisk1D:
         The **kwargs are passed to `plot_sigma_d
         """
         from matplotlib.pyplot import figure,savefig,clf,close,rcParams
-        from random import choice
-        from string import ascii_letters
+        from random            import choice
+        from string            import ascii_letters
+        from uTILities         import progress_bar
         import subprocess
         if i0<0: i0=0
         if i1>self.n_t or i1==-1: i1 = self.n_t - 1
@@ -969,7 +970,7 @@ class pydisk1D:
         # 
         rcParams=params
 
-    def read_diskev(self,data_dir="data/"):
+    def read_diskev(self,data_dir="data/",skip_debug=True):
         """
         Reads in the simulation data from the given folder.
    
@@ -1009,7 +1010,7 @@ class pydisk1D:
         for infile in file_list:
             filename=infile.replace(data_dir,'');
             if filename=='debug_distri.dat':
-                print("    skipping "+filename)
+                if skip_debug: print("    skipping "+filename)
                 continue
             print("    working on file: " + filename)
             #
@@ -1034,7 +1035,10 @@ class pydisk1D:
         #
         self.n_r     = len(self.x)
         self.n_t     = len(self.timesteps)
-        self.n_m     = len(self.m_grid)
+        if self.m_grid is not None:
+            self.n_m     = len(self.m_grid)
+        else:
+            self.n_m     = len(self.grainsizes)
         self.stored_data += ['n_r','n_t','n_m']
         #
         # reformat the variables
@@ -1053,11 +1057,24 @@ class pydisk1D:
         if self.v_gas_dead is not None: self.v_gas_dead = self.v_gas_dead.reshape(n_t,n_r)
         if self.v_dust     is not None: self.v_dust     = self.v_dust.reshape(n_t*n_m,n_r)
         #
+        # process the debug distribution
+        #
+        if not skip_debug:
+            filename = 'debug_distri.dat'
+            if os.path.isfile(data_dir+os.sep+filename):
+                print("    working on file: " + filename)
+                self.debug_distri = array([float(i) for i in open(data_dir+os.sep+'debug_distri.dat').read().split()])
+                mod = len(self.debug_distri)%(self.n_m*self.n_r)
+                if mod>0: self.debug_distri = self.debug_distri[:-mod]
+                self.debug_distri = self.debug_distri.reshape([-1,self.n_m,self.n_r])
+            else:
+                print("    {} not present ".format(filename))
+        #
         # convert the integer variables from float to int
         #
-        self.peak_position.astype('int32')
-        self.r_min.astype('int32')
-        self.steps.astype('int32')
+        if self.peak_position is not None: self.peak_position.astype('int32')
+        if self.r_min is not None: self.r_min.astype('int32')
+        if self.steps is not None: self.steps.astype('int32')
         print "... Done"
 
     def save_diskev(self,data_dir=''):
