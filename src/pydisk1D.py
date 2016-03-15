@@ -90,6 +90,7 @@ class pydisk1D:
         self.m_dot_star          = None
         self.ttable              = None
         self.stored_data         = None
+        self.stokesnumber        = None
 
         if data_dir=='':
             print "no data directory given, will not read data"
@@ -681,7 +682,7 @@ class pydisk1D:
         widget.plotter(x=self.x/self.AU,data=self.sigma_g,data2=data2,
                            times=self.timesteps/self.year,i_start=N,**kwargs)
 
-    def plot_sigma_d_widget(self,N=0,sizelimits=False,stokesaxis=False,**kwargs):
+    def plot_sigma_d_widget(self,N=0,sizelimits=False,stokesaxis=False,usefudgefactors=True,**kwargs):
         """ 
         Produces a plot of the 2D dust surface density at snapshot number N.
         
@@ -695,6 +696,9 @@ class pydisk1D:
         stokesaxis : bool
         :    if true, use stokes number instead of particle size on y-axis
 
+        usefudgefactors : bool
+        :    if true, use fudge factors from BKE2012
+
         **kwargs
         : will be passed forward to the widget
         
@@ -705,6 +709,33 @@ class pydisk1D:
         """ 
         import widget
         from uTILities import get_St, progress_bar
+        
+        if usefudgefactors:
+            fudge_fr = 0.37
+            fudge_dr = 0.55
+        else:
+            fudge_fr = 1.
+            fudge_dr = 1.
+        #
+        # calculate the stokes number if needed
+        # 
+        if stokesaxis and self.stokesnumber is None:
+            R,_ = meshgrid(self.x,self.grainsizes)
+            Y   = zeros([self.n_t*self.n_m,self.n_r])
+            for it in range(self.n_t):
+                progress_bar(it/(self.n_t-1.)*100,'calculating St-axis')
+                for ir in range(self.n_r):
+                    Y[it*self.n_m+arange(self.n_m),ir] = get_St(self.grainsizes, self.T[it,ir], self.sigma_g[it,ir], self.x[ir], self.m_star[it], rho_s=self.nml['RHO_S'],Stokesregime=self.nml['STOKES_REGIME'])
+            self.stokesnumber = Y
+        elif stokesaxis:
+            R,_ = meshgrid(self.x,self.grainsizes)
+            Y = self.stokesnumber
+        else:
+            R = self.x
+            Y = self.grainsizes
+        #
+        # calculate the barriers
+        #
         add_arr = []
         if sizelimits==True:
             RHO_S     = self.nml['RHO_S']
@@ -713,8 +744,6 @@ class pydisk1D:
             a_df = a_fr.copy()
             for N in arange(self.n_t):
                 sigma_d   = sum(self.sigma_d[N*self.n_m+arange(self.n_m),:],0)
-                fudge_fr = 0.37
-                fudge_dr = 0.55
                 gamma = dlydlx(self.x,self.sigma_g[N])+0.5*dlydlx(self.x,self.T[N])-1.5
                 #
                 # the standard fomula with the fudge factor
@@ -744,12 +773,6 @@ class pydisk1D:
         # convert to stokes number as y-axis
         # 
         if stokesaxis:
-            R,_ = meshgrid(self.x,self.grainsizes)
-            Y   = zeros([self.n_t*self.n_m,self.n_r])
-            for it in range(self.n_t):
-                progress_bar(it/(self.n_t-1.)*100,'calculating St-axis')
-                for ir in range(self.n_r):
-                    Y[it*self.n_m+arange(self.n_m),ir] = get_St(self.grainsizes, self.T[it,ir], self.sigma_g[it,ir], self.x[ir], self.m_star[it], rho_s=self.nml['RHO_S'],Stokesregime=self.nml['STOKES_REGIME'])
             #
             # now the size limits:
             # they have all been derived for epstein drag, so let's revert this
@@ -757,16 +780,20 @@ class pydisk1D:
             if sizelimits:
                 for i,limit in enumerate(add_arr):
                     add_arr[i] = limit*RHO_S/self.sigma_g*pi/2.0
+        #
+        #
+        #
+        if stokesaxis:
+            yl = 'Stokes number'
         else:
-            R = self.x
-            Y = self.grainsizes
+            yl = 'grain size [cm]'
         #
         # call the widget
         #
         widget.plotter(x=R/self.AU,y=Y,
                        data=self.sigma_d/gsf,
                        data2=add_arr,i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
-                       zlog=1,zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel='grain size [cm]',lstyle=['k','w-','r-','y--'],**kwargs)
+                       zlog=1,zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel=yl,lstyle=['k','w-','r-','y--'],**kwargs)
 
     def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,xlog=True,ylog=True,clevel=None,ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False,showtitle=True,colbar=True,time=None):
         """
