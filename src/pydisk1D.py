@@ -1,5 +1,5 @@
 from numpy import array,append,arange,trapz,pi,zeros,ceil,sqrt,log,log10,minimum,\
-meshgrid,savetxt,isnan,interp,loadtxt,random,ndarray,sum
+maximum,meshgrid,savetxt,isnan,interp,loadtxt,random,ndarray,sum,ones
 import matplotlib,h5py,re,glob,os,sys
 from uTILities import parse_nml, dlydlx,write_nml,my_colorbar
 from constants import AU,year, k_b, m_p, mu,Grav, sig_h2
@@ -725,7 +725,7 @@ class pydisk1D:
             for it in range(self.n_t):
                 progress_bar(it/(self.n_t-1.)*100,'calculating St-axis')
                 for ir in range(self.n_r):
-                    Y[it*self.n_m+arange(self.n_m),ir] = get_St(self.grainsizes, self.T[it,ir], self.sigma_g[it,ir], self.x[ir], self.m_star[it], rho_s=self.nml['RHO_S'],Stokesregime=self.nml['STOKES_REGIME'])
+                    Y[it*self.n_m+arange(self.n_m),ir] = get_St(self.grainsizes, self.T[it,ir], self.sigma_g[it,ir], self.x[ir], self.m_star[it], rho_s=self.nml['RHO_S'],Stokesregime=self.nml['STOKES_REGIME'],fix_error=False)
             self.stokesnumber = Y
         elif stokesaxis:
             R,_ = meshgrid(self.x,self.grainsizes)
@@ -739,9 +739,10 @@ class pydisk1D:
         add_arr = []
         if sizelimits==True:
             RHO_S     = self.nml['RHO_S']
-            a_fr = zeros([self.n_t,self.n_r])
-            a_dr = a_fr.copy()
-            a_df = a_fr.copy()
+            lim_fr    = zeros([self.n_t,self.n_r])
+            lim_dr    = lim_fr.copy()
+            lim_St1   = lim_fr.copy()
+            #a_df      = lim_fr.copy()
             for N in arange(self.n_t):
                 sigma_d   = sum(self.sigma_d[N*self.n_m+arange(self.n_m),:],0)
                 gamma = dlydlx(self.x,self.sigma_g[N])+0.5*dlydlx(self.x,self.T[N])-1.5
@@ -750,36 +751,68 @@ class pydisk1D:
                 #
                 #a_fr  = fudge_fr*2*self.sigma_g[N,:]*self.nml['V_FRAG']**2./(3*pi*self.alpha[N]*RHO_S*k_b*self.T[N]/mu/m_p)
                 #
-                # the nonlinear one
+                # calculate limits in terms of stokes numbers
                 #
                 om    = sqrt(Grav*self.m_star[N]/self.x**3)
                 cs    = sqrt(k_b*self.T[N]/mu/m_p)
-                b     = 3.*self.alpha[N]*cs**2/self.nml['V_FRAG']**2
-                a_fr[N,:]  = self.sigma_g[N]/(pi*RHO_S)*(b-sqrt(b**2-4.))
-                a_dr[N,:]  = fudge_dr/(self.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*self.x**2.*(Grav*self.m_star[N]/self.x**3)/(abs(gamma)*cs**2)
-                NN     = 0.5
-                a_df[N,:]  = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*self.nml['V_FRAG']*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*cs**2*(1.-NN)) #@UnusedVariable
-                St  = 2.*self.sigma_g/(pi*RHO_S)
-                if self.nml['STOKES_REGIME']==1:
-                    St = minimum(St,sqrt(9.*sqrt(2.*pi)/16.*mu*m_p*cs/(om*RHO_S*sig_h2)))
-            add_arr += [St,a_fr,a_dr]
+                H     = cs/om
+                n     = self.sigma_g[N]/(sqrt(2*pi)*H*m_p)
+                mfp   = 0.5/(sig_h2*n)
+                #
+                # fragmentation limit in terms of Stokes number
+                #
+                b            = 3.*self.alpha[N]*cs**2/self.nml['V_FRAG']**2
+                lim_fr[N,:]  = 0.5*(b-sqrt(b**2-4.))
+ 
+                if stokesaxis:
+                    #
+                    # St = 1 as Stokes number
+                    #
+                    lim_St1    = ones(lim_fr.shape)
+                    #
+                    # drift limit as Stokes number
+                    #
+                    lim_dr_e   = fudge_dr*sigma_d/self.sigma_g[N]*(self.x*om/cs)**2/abs(gamma) # St_drift in Epstein
+                    lim_dr_St1 = fudge_dr*1./3.*sigma_d**2/self.sigma_g[N]/mfp*RHO_S*(self.x*om/cs)**4/abs(gamma)**2 # St_drift in Stokes 1 regime
+                    if self.nml['STOKES_REGIME']==1:
+                        lim_dr[N,:] = maximum(lim_dr_e,lim_dr_St1)
+                    else:
+                        lim_dr[N,:] = lim_dr_e
+                else:
+                    #
+                    # stokes number of unity in grain size
+                    #
+                    St_e   = 2.*self.sigma_g[N]/(pi*RHO_S)           # Stokes number = 1 in Epstein regime
+                    St_St1 = (9.*self.sigma_g[N]*mfp/(2.*pi*RHO_S))  # Stokes number = 1 in first Stokes regime
+                    if self.nml['STOKES_REGIME']==1:
+                        lim_St1[N,:] = minimum(St_e,St_St1)
+                    else:
+                        lim_St1[N,:] = St_e
+                    #
+                    # convert fragmentation limit from Stokes number to particle size
+                    #
+                    lim_fr_e    = 2.*self.sigma_g[N]/(pi*RHO_S)*lim_fr[N,:]
+                    lim_fr_St1  = (9.*lim_fr[N,:]*self.sigma_g[N]*mfp/(2.*pi*RHO_S) )**0.5
+                    if self.nml['STOKES_REGIME']==1:
+                        lim_fr[N,:] = minimum(lim_fr_e,lim_fr_St1)
+                    else:
+                        lim_fr[N,:] = lim_fr_e
+                    #
+                    # convert drift limit from Stokes number to particle size
+                    #
+                    lim_dr[N,:]   = fudge_dr/(self.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*self.x**2.*(Grav*self.m_star[N]/self.x**3)/(abs(gamma)*cs**2)
+                    #NN          = 0.5
+                    #a_df[N,:]   = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*self.nml['V_FRAG']*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*cs**2*(1.-NN)) #@UnusedVariable
+                    #if self.nml['STOKES_REGIME']==1:
+                    #    St1 = minimum(St1,sqrt(9.*sqrt(2.*pi)/16.*mu*m_p*cs/(om*RHO_S*sig_h2)))
+                    
+            add_arr += [lim_St1,lim_fr,lim_dr]
         #
         # plot gas surface density at the given snapshot 'N' 
         #
         if (N+1>self.sigma_g.shape[0]):
             N=0;
         gsf=log(self.grainsizes[1]/self.grainsizes[0])
-        #
-        # convert to stokes number as y-axis
-        # 
-        if stokesaxis:
-            #
-            # now the size limits:
-            # they have all been derived for epstein drag, so let's revert this
-            #
-            if sizelimits:
-                for i,limit in enumerate(add_arr):
-                    add_arr[i] = limit*RHO_S/self.sigma_g*pi/2.0
         #
         #
         #
