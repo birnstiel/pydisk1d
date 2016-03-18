@@ -682,7 +682,7 @@ class pydisk1D:
         widget.plotter(x=self.x/self.AU,data=self.sigma_g,data2=data2,
                            times=self.timesteps/self.year,i_start=N,**kwargs)
 
-    def plot_sigma_d_widget(self,N=0,sizelimits=False,stokesaxis=False,usefudgefactors=True,**kwargs):
+    def plot_sigma_d_widget(self,N=0,sizelimits=False,stokesaxis=False,usefudgefactors=True,v_frag=None,**kwargs):
         """ 
         Produces a plot of the 2D dust surface density at snapshot number N.
         
@@ -709,6 +709,8 @@ class pydisk1D:
         """ 
         import widget
         from uTILities import get_St, progress_bar
+        
+        if v_frag is None: v_frag = self.nml['V_FRAG']
         
         if usefudgefactors:
             fudge_fr = 0.37
@@ -761,7 +763,7 @@ class pydisk1D:
                 #
                 # fragmentation limit in terms of Stokes number
                 #
-                b            = 3.*self.alpha[N]*cs**2/self.nml['V_FRAG']**2
+                b            = 3.*self.alpha[N]*cs**2/v_frag**2
                 lim_fr[N,:]  = 0.5*(b-sqrt(b**2-4.))
  
                 if stokesaxis:
@@ -802,7 +804,7 @@ class pydisk1D:
                     #
                     lim_dr[N,:]   = fudge_dr/(self.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*self.x**2.*(Grav*self.m_star[N]/self.x**3)/(abs(gamma)*cs**2)
                     #NN          = 0.5
-                    #a_df[N,:]   = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*self.nml['V_FRAG']*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*cs**2*(1.-NN)) #@UnusedVariable
+                    #a_df[N,:]   = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*v_frag*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*cs**2*(1.-NN)) #@UnusedVariable
                     #if self.nml['STOKES_REGIME']==1:
                     #    St1 = minimum(St1,sqrt(9.*sqrt(2.*pi)/16.*mu*m_p*cs/(om*RHO_S*sig_h2)))
                     
