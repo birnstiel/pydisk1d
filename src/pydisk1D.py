@@ -1,5 +1,5 @@
 from numpy import array,append,arange,trapz,pi,zeros,ceil,sqrt,log,log10,minimum,\
-maximum,meshgrid,savetxt,isnan,interp,loadtxt,random,ndarray,sum,ones
+maximum,meshgrid,savetxt,isnan,interp,loadtxt,random,ndarray,sum,ones,asarray
 import matplotlib,h5py,re,glob,os,sys
 from uTILities import parse_nml, dlydlx,write_nml,my_colorbar
 from constants import AU,year, k_b, m_p, mu,Grav, sig_h2
@@ -698,6 +698,13 @@ class pydisk1D:
 
         usefudgefactors : bool
         :    if true, use fudge factors from BKE2012
+        
+        v_frag : None | float | array | function
+        :    if V_FRAG for calculating the fragmentation barrier should not come from the nml-parameters, you can provide
+           - a different float number
+           - a 1D (r) array which is then the same for all snapshots
+           - a 2D (r) array, which is then v_fr[t,r]
+           - a function that takes the snapshot index as only argument and returns a 1D array
 
         **kwargs
         : will be passed forward to the widget
@@ -710,7 +717,20 @@ class pydisk1D:
         import widget
         from uTILities import get_St, progress_bar
         
-        if v_frag is None: v_frag = self.nml['V_FRAG']
+        v_frag_in = v_frag
+        if v_frag_in is None:
+            v_frag_in = self.nml['V_FRAG']*ones(self.n_r)
+            v_frag = lambda N: v_frag_in
+        elif hasattr(v_frag, '__call__'):
+            pass
+        else:
+            v_frag_in = asarray(v_frag)
+            if v_frag_in.ndim==1:
+                v_frag = lambda N: v_frag_in
+            elif v_frag_in.ndim==2:
+                v_frag = lambda N: v_frag_in[N]
+            else:
+                raise ValueError('could not translate v_frag into a function, use float, 1D array, 2D array or function.')
         
         if usefudgefactors:
             fudge_fr = 0.37
@@ -751,7 +771,7 @@ class pydisk1D:
                 #
                 # the standard fomula with the fudge factor
                 #
-                #a_fr  = fudge_fr*2*self.sigma_g[N,:]*self.nml['V_FRAG']**2./(3*pi*self.alpha[N]*RHO_S*k_b*self.T[N]/mu/m_p)
+                #a_fr  = fudge_fr*2*self.sigma_g[N,:]*v_frag(N)**2./(3*pi*self.alpha[N]*RHO_S*k_b*self.T[N]/mu/m_p)
                 #
                 # calculate limits in terms of stokes numbers
                 #
@@ -763,7 +783,7 @@ class pydisk1D:
                 #
                 # fragmentation limit in terms of Stokes number
                 #
-                b            = 3.*self.alpha[N]*cs**2/v_frag**2
+                b            = 3.*self.alpha[N]*cs**2/v_frag(N)**2
                 lim_fr[N,:]  = 0.5*(b-sqrt(b**2-4.))
  
                 if stokesaxis:
@@ -804,7 +824,7 @@ class pydisk1D:
                     #
                     lim_dr[N,:]   = fudge_dr/(self.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*self.x**2.*(Grav*self.m_star[N]/self.x**3)/(abs(gamma)*cs**2)
                     #NN          = 0.5
-                    #a_df[N,:]   = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*v_frag*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*cs**2*(1.-NN)) #@UnusedVariable
+                    #a_df[N,:]   = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*v_frag(N)*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*cs**2*(1.-NN)) #@UnusedVariable
                     #if self.nml['STOKES_REGIME']==1:
                     #    St1 = minimum(St1,sqrt(9.*sqrt(2.*pi)/16.*mu*m_p*cs/(om*RHO_S*sig_h2)))
                     
