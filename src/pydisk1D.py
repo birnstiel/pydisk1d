@@ -283,6 +283,7 @@ class pydisk1D:
         # make the movie
         #
         moviename = str(self.data_dir)
+        if moviename=='' or moviename is None: moviename='movie'
         if moviename[-1] == os.sep: moviename = moviename[0:-1]
         
         moviename = os.path.basename(moviename)+'.mp4'
@@ -682,11 +683,13 @@ class pydisk1D:
         widget.plotter(x=self.x/self.AU,data=self.sigma_g,data2=data2,
                            times=self.timesteps/self.year,i_start=N,**kwargs)
 
-    def plot_sigma_d_widget(self,N=0,sizelimits=False,stokesaxis=False,usefudgefactors=True,v_frag=None,**kwargs):
+    def plot_sigma_d_widget(self,N=0,sizelimits=False,stokesaxis=False,usefudgefactors=True,v_frag=None,fluxplot=False,zlim=None,**kwargs):
         """ 
         Produces a plot of the 2D dust surface density at snapshot number N.
         
         Keywords:
+        ---------
+        
         N
         :    index of the snapshot, defaults to first snapshot
         
@@ -705,6 +708,12 @@ class pydisk1D:
            - a 1D (r) array which is then the same for all snapshots
            - a 2D (r) array, which is then v_fr[t,r]
            - a function that takes the snapshot index as only argument and returns a 1D array
+           
+        fluxplot : bool
+        :   if True, plot dust flux surface density instead of dust surface density
+        
+        zlim : 2 element array like
+        :   z-axis limits
 
         **kwargs
         : will be passed forward to the widget
@@ -716,7 +725,10 @@ class pydisk1D:
         """ 
         import widget
         from uTILities import get_St, progress_bar
+        from constants import M_earth
+        from numpy import vstack, newaxis
         
+        i_start = N
         v_frag_in = v_frag
         if v_frag_in is None:
             v_frag_in = self.nml['V_FRAG']*ones(self.n_r)
@@ -836,7 +848,18 @@ class pydisk1D:
             N=0;
         gsf=log(self.grainsizes[1]/self.grainsizes[0])
         #
+        # make data, either surface density or flux surface density
         #
+        if fluxplot:
+            justdrift = 1
+            v_gas_a   = vstack([v_g[newaxis,:]*ones([self.n_m,self.n_r]) for v_g in self.v_gas])
+            Z         = 2*pi*self.x*self.sigma_d/gsf*abs(self.v_dust-v_gas_a*justdrift)/M_earth*year
+        else:
+            Z = self.sisgma_d/gsf
+        if zlim is None:
+            zlim = Z.max()*array([1e-10,2])
+        #
+        # select axis label
         #
         if stokesaxis:
             yl = 'Stokes number'
@@ -846,11 +869,11 @@ class pydisk1D:
         # call the widget
         #
         widget.plotter(x=R/self.AU,y=Y,
-                       data=self.sigma_d/gsf,
-                       data2=add_arr,i_start=N,times=self.timesteps/self.year,xlog=1,ylog=1,
-                       zlog=1,zlim=array([1e-10,1e1])/gsf,xlabel='r [AU]',ylabel=yl,lstyle=['k','w-','r-','y--'],**kwargs)
+                       data=Z,
+                       data2=add_arr,i_start=i_start,times=self.timesteps/self.year,xlog=1,ylog=1,
+                       zlog=1,zlim=zlim,xlabel='r [AU]',ylabel=yl,lstyle=['k','w-','r-','y--'],**kwargs)
 
-    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,xlog=True,ylog=True,clevel=None,ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False,showtitle=True,colbar=True,time=None):
+    def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,xlog=True,ylog=True,clevel=None,ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False,showtitle=True,colbar=True,time=None,base_level=None,lc=['r','r'],ls = ['-','--']):
         """
         Produces my default plot of the dust surface density.
         
@@ -911,6 +934,12 @@ class pydisk1D:
         time : float
         : if not none, plot the snapshot at that time (or the closest one)
         
+        base_level : float|True|None
+        :   add this value (if float) or the minimum color level (if ture) to the data to avoid white background
+        
+        ls,lc : array
+        :   what styles/colors to use for the size limit lines 
+        
         Example:
             >>> D.plot_sigma_d(133)
 
@@ -919,7 +948,12 @@ class pydisk1D:
         xlim,contourf,pcolor,gca,xscale,yscale,colorbar,contour,setp,legend,rcParams
         params = rcParams.copy()
         if time is not None: N = abs(self.timesteps/year-time).argmin()
-        if clevel==None: clevel=arange(-10,1)+ceil(log10(self.sigma_d.max()/log(self.grainsizes[1]/self.grainsizes[0])))
+        if clevel is None: clevel=arange(-10,1)+ceil(log10(self.sigma_d.max()/log(self.grainsizes[1]/self.grainsizes[0])))
+        if base_level is None or base_level==False:
+            base_level = 0
+        else:
+            if base_level==True:
+                base_level = 10**clevel[0]
         if fs is not None: rcParams['font.size']=fs
         #
         # check input
@@ -964,7 +998,7 @@ class pydisk1D:
         # draw the data
         #
         if plot_style=='c':
-            cont=contourf(self.x/1.4e13,self.grainsizes,log10(#10**clevel[0]+ 
+            cont=contourf(self.x/1.4e13,self.grainsizes,log10(base_level+ 
               self.sigma_d[N*self.n_m+arange(0,self.n_m),:]/log(self.grainsizes[1]/self.grainsizes[0])),clevel,cmap=cmap,extend='both')
             cont.cmap.set_under('k')
             for p in cont.collections: p.set_edgecolor('face')
@@ -979,9 +1013,9 @@ class pydisk1D:
                 yl=array(gca().get_ylim())
                 yl[0]=max(yl[0],self.grainsizes[0])
             if self.nml['FRAG_SWITCH']==1:
-                lim_lines+=loglog(self.x/AU,a_fr,'r-',linewidth=2)
+                lim_lines+=loglog(self.x/AU,a_fr,color=lc[0],ls=ls[0],linewidth=2)
                 lim_strings+=['fragmentation barrier']
-            lim_lines+=loglog(self.x/AU,a_dr,'r--',linewidth=2)
+            lim_lines+=loglog(self.x/AU,a_dr,color=lc[1],ls=ls[1],linewidth=2)
             lim_strings+=['drift barrier']
         if xl is not None:
             gca().set_xlim(xl)
