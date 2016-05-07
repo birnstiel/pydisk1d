@@ -101,20 +101,7 @@ def plot(d, time, sizelimits=True, justdrift=False, stokesaxis=False, usefudgefa
     rcParams['font.family']                 = 'STIXGeneral'
     rcParams['text.usetex']                 = True
     
-    
-    # Get the Y-data -- flux or density.
-    
     it        = d.timesteps.searchsorted(time)
-    
-    if fluxplot:
-        slice = 2*pi*d.x*d.sigma_d[d.n_m*it+np.arange(d.n_m),:]*(d.v_dust[d.n_m*it+np.arange(d.n_m),:]-d.v_gas[it,:]*justdrift)
-        slice = slice/M_earth*year
-    else:
-        slice = d.sigma_d[d.n_m*it+np.arange(d.n_m),:]
-        
-    gsf=np.log(d.grainsizes[1]/d.grainsizes[0])
-    slice = slice/gsf
-    
     
     # Define a fragmentation velocity function
     
@@ -132,7 +119,6 @@ def plot(d, time, sizelimits=True, justdrift=False, stokesaxis=False, usefudgefa
             v_frag = lambda N: v_frag_in[N]
         else:
             raise ValueError('could not translate v_frag into a function, use float, 1D array, 2D array or function.')
-    
     
     # Define fudge factors
     
@@ -208,6 +194,35 @@ def plot(d, time, sizelimits=True, justdrift=False, stokesaxis=False, usefudgefa
             #
             lim_dr   = fudge_dr/(d.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*d.x**2.*(Grav*d.m_star[N]/d.x**3)/(np.abs(gamma)*cs**2)
     
+    # calculate the stokes number if needed
+    
+    if fluxplot or stokesaxis:    
+        St       = np.zeros([d.n_m,d.n_r])
+        for ir in range(d.n_r):
+            St[:,ir] = get_St(d.grainsizes, d.T[it,ir], d.sigma_g[it,ir], d.x[ir], d.m_star[it], rho_s=d.nml['RHO_S'],Stokesregime=d.nml['STOKES_REGIME'],fix_error=False)
+            
+    # choose the axes
+            
+    if stokesaxis:
+        X,_ = np.meshgrid(d.x,d.grainsizes)
+        Y   = St
+    else:
+        X = d.x
+        Y = d.grainsizes
+        
+    # Get the Y-data -- flux or density.
+    
+    if fluxplot:
+        Z = 2*pi*d.x*d.sigma_d[d.n_m*it+np.arange(d.n_m),:]*(d.v_dust[d.n_m*it+np.arange(d.n_m),:]-d.v_gas[it,:]/(1.+St**2)*justdrift)
+        Z = Z/M_earth*year
+    else:
+        Z = d.sigma_d[d.n_m*it+np.arange(d.n_m),:]
+        
+    gsf=np.log(d.grainsizes[1]/d.grainsizes[0])
+    Z = Z/gsf
+    
+    # choose the plotting limits
+
     if xlim is None: xlim = d.x[[0,-1]]
     if ylim is None:
         if stokesaxis:
@@ -215,16 +230,7 @@ def plot(d, time, sizelimits=True, justdrift=False, stokesaxis=False, usefudgefa
         else:
             ylim = d.grainsizes[[0,-1]]
     
-    if zlim is None: zlim = np.log10(np.array([1e-10,1])*abs(slice).max())
-    
-    Y   = np.zeros([d.n_m,d.n_r])
-    if stokesaxis:
-        for ir in range(d.n_r):
-            Y[:,ir] = get_St(d.grainsizes, d.T[it,ir], d.sigma_g[it,ir], d.x[ir], d.m_star[it], rho_s=d.nml['RHO_S'],Stokesregime=d.nml['STOKES_REGIME'],fix_error=False)
-        R,_ = np.meshgrid(d.x,d.grainsizes)
-    else:
-        R = d.x
-        Y = d.grainsizes
+    if zlim is None: zlim = np.log10(np.array([1e-10,1])*abs(Z).max())
         
     # plotting
     
@@ -234,13 +240,13 @@ def plot(d, time, sizelimits=True, justdrift=False, stokesaxis=False, usefudgefa
     cax = plt.subplot(gs[1])
     #gs.update(wspace=0.15)
     
-    c1 = ax.contourf(R/AU,Y,(abs(slice+1e-300)), np.logspace(zlim[0],zlim[1],ncont),norm=LogNorm())
+    c1 = ax.contourf(X/AU,Y,(abs(Z+1e-200)), np.logspace(zlim[0],zlim[1],ncont),norm=LogNorm())
     
-    ax.plot(d.x/AU,lim_St1,'-',label='$St = 1$')
+    ax.plot(d.x/AU,lim_St1,'-',label='$\mathrm{St} = 1$')
     ax.plot(d.x/AU,lim_fr, '-',label='$a_\mathrm{frag}$')
     ax.plot(d.x/AU,lim_dr, '-',label='$a_\mathrm{drift}$')
     
-    if fluxplot: ax.contour(R/AU,Y,slice,0,colors='w',linestyles='--')
+    if fluxplot: ax.contour(X/AU,Y,Z,0,colors='w',linestyles='--')
     
     ax.set_xscale('log')
     ax.set_yscale('log')
@@ -263,7 +269,10 @@ def plot(d, time, sizelimits=True, justdrift=False, stokesaxis=False, usefudgefa
     cb.patch.set_visible(False)
     #cb.locator = ticker.MaxNLocator(nbins=7)
     cb.locator = ticker.LogLocator()
-    cb.set_label('$a \cdot \Sigma(r,a)$ [g cm$^{-2}$]')
+    if fluxplot:
+        cb.set_label('$a \cdot \dot M (r,a)$ [$M_\oplus$ yr$^{-1}$]')
+    else:
+        cb.set_label('$a \cdot \Sigma(r,a)$ [g cm$^{-2}$]')
     cb.update_ticks()
     
     if stokesaxis:
@@ -277,7 +286,7 @@ def plot(d, time, sizelimits=True, justdrift=False, stokesaxis=False, usefudgefa
         if outfile == '':
             fname = '{}_{:2.2f}Myr.pdf'.format(d.data_dir,time/1e6/year)
         else:
-            fname == outfile
+            fname = outfile
         f.savefig(fname)
     
 if __name__ == '__main__':
