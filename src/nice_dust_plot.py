@@ -4,7 +4,7 @@
 Script to plot snapshots of the dust evolution code (Birnstiel et al. 2010)
 """
 
-def plot(d, time, sizelimits=True, justdrift=False, stokesaxis=False, usefudgefactors=True,
+def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefactors=True,
     fluxplot=False, colormap='viridis', xlim=None, ylim=None, zlim=None, v_frag=None, ncont=20, outfile=None):
     """
     Plot a snapshots of the dust evolution code (Birnstiel et al. 2010).
@@ -242,7 +242,7 @@ def plot(d, time, sizelimits=True, justdrift=False, stokesaxis=False, usefudgefa
     
     c1 = ax.contourf(X/AU,Y,(abs(Z+1e-200)), np.logspace(zlim[0],zlim[1],ncont),norm=LogNorm())
     
-    ax.plot(d.x/AU,lim_St1,'-',label='$\mathrm{St} = 1$')
+    ax.plot(d.x/AU,lim_St1,'-',label='$\mathrm{St}=1$')
     ax.plot(d.x/AU,lim_fr, '-',label='$a_\mathrm{frag}$')
     ax.plot(d.x/AU,lim_dr, '-',label='$a_\mathrm{drift}$')
     
@@ -251,14 +251,14 @@ def plot(d, time, sizelimits=True, justdrift=False, stokesaxis=False, usefudgefa
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.set_ylim(ylim)
-    ax.set_xlabel('$r$ [AU]');
+    ax.set_xlabel('$r$ $[\mathrm{AU}]$');
     ax.set_axis_bgcolor(plt.cm.get_cmap(colormap).colors[0])
     
     leg=ax.legend(loc='upper right',prop={'size':fs},handlelength=2)
     for t in leg.get_texts(): t.set_color('w') 
     leg.get_frame().set_alpha(0)
     
-    ax.text(0.5, 0.95,num2tex(d.timesteps[it]/year,2,2)+' years', horizontalalignment='center',
+    ax.text(0.5, 0.95,num2tex(d.timesteps[it]/year,2,2)+' $\mathrm{years}$', horizontalalignment='center',
         verticalalignment='top',transform=ax.transAxes,color='k',bbox=dict(facecolor='white', alpha=0.6))
     
     cb = plt.colorbar(c1,cax=cax,ax=ax)
@@ -270,15 +270,19 @@ def plot(d, time, sizelimits=True, justdrift=False, stokesaxis=False, usefudgefa
     #cb.locator = ticker.MaxNLocator(nbins=7)
     cb.locator = ticker.LogLocator()
     if fluxplot:
-        cb.set_label('$a \cdot \dot M (r,a)$ [$M_\oplus$ yr$^{-1}$]')
+        if justdrift:
+            cb.set_label('$2\pi r\Sigma_\mathrm{d}(r,a)v_\mathrm{drift}$ $[M_\oplus\,\mathrm{yr}^{-1}]$') 
+        else:
+            #cb.set_label('$2\pi r\Sigma_\mathrm{d}(r,a)v_\mathrm{d}$ $[M_\oplus\,\mathrm{yr}^{-1}]$') # Christians version
+            cb.set_label('$a \cdot \dot M (r,a)$ [$M_\oplus$ yr$^{-1}$]')
     else:
         cb.set_label('$a \cdot \Sigma(r,a)$ [g cm$^{-2}$]')
     cb.update_ticks()
     
     if stokesaxis:
-        ax.set_ylabel('Stokes number')
+        ax.set_ylabel('$\mathrm{Stokes number}$')
     else:
-        ax.set_ylabel('particle size [cm]')
+        ax.set_ylabel('$\mathrm{particle}$ $\mathrm{size}$ $[\mathrm{cm}]$')
         
     f.tight_layout()
     
