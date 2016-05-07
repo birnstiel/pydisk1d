@@ -236,9 +236,9 @@ def plot(d, time, sizelimits=True, justdrift=False, stokesaxis=False, usefudgefa
     
     c1 = ax.contourf(R/AU,Y,(abs(slice+1e-300)), np.logspace(zlim[0],zlim[1],ncont),norm=LogNorm())
     
-    ax.plot(R/AU,lim_St1,'-',label='$St = 1$')
-    ax.plot(R/AU,lim_fr, '-',label='$a_\mathrm{frag}$')
-    ax.plot(R/AU,lim_dr, '-',label='$a_\mathrm{drift}$')
+    ax.plot(d.x/AU,lim_St1,'-',label='$St = 1$')
+    ax.plot(d.x/AU,lim_fr, '-',label='$a_\mathrm{frag}$')
+    ax.plot(d.x/AU,lim_dr, '-',label='$a_\mathrm{drift}$')
     
     if fluxplot: ax.contour(R/AU,Y,slice,0,colors='w',linestyles='--')
     
