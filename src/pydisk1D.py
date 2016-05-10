@@ -855,7 +855,7 @@ class pydisk1D:
             v_gas_a   = vstack([v_g[newaxis,:]*ones([self.n_m,self.n_r]) for v_g in self.v_gas])
             Z         = 2*pi*self.x*self.sigma_d/gsf*abs(self.v_dust-v_gas_a*justdrift)/M_earth*year
         else:
-            Z = self.sisgma_d/gsf
+            Z = self.sigma_d/gsf
         if zlim is None:
             zlim = Z.max()*array([1e-10,2])
         #
