@@ -5,7 +5,8 @@ Script to plot snapshots of the dust evolution code (Birnstiel et al. 2010)
 """
 
 def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefactors=True,
-    fluxplot=False, colormap='viridis', xlim=None, ylim=None, zlim=None, v_frag=None, ncont=20, outfile=None,context=None):
+    fluxplot=False, colormap='viridis', xlim=None, ylim=None, zlim=None, v_frag=None,
+    ncont=20, outfile=None,context=None,showtime=True):
     """
     Plot a snapshots of the dust evolution code (Birnstiel et al. 2010).
     
@@ -56,6 +57,9 @@ def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
         
     context : rc_context
     :   use this context to plot instead of default values
+    
+    showtime : bool
+    :   whether to show the time as text box
     """
         
     import brewer2mpl, warnings
@@ -260,12 +264,13 @@ def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
         ax.set_xlabel('$r$ $[\mathrm{AU}]$');
         ax.set_axis_bgcolor(plt.cm.get_cmap(colormap).colors[0])
         
-        leg=ax.legend(loc='upper right',prop={'size':fs},handlelength=2)
+        leg=ax.legend(loc='upper right',prop={'size':rcParams['font.size']},handlelength=2)
         for t in leg.get_texts(): t.set_color('w') 
         leg.get_frame().set_alpha(0)
         
-        ax.text(0.5, 0.95,num2tex(d.timesteps[it]/year,2,2)+' $\mathrm{years}$', horizontalalignment='center',
-            verticalalignment='top',transform=ax.transAxes,color='k',bbox=dict(facecolor='white', alpha=0.6))
+        if showtime:
+            ax.text(0.5, 0.95,num2tex(d.timesteps[it]/year,2,2)+' $\mathrm{years}$', horizontalalignment='center',
+                verticalalignment='top',transform=ax.transAxes,color='k',bbox=dict(facecolor='white', alpha=0.6))
         
         cb = plt.colorbar(c1,cax=cax,ax=ax)
         cb.ax.set_axis_bgcolor('none')
