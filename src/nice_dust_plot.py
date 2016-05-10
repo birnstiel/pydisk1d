@@ -5,7 +5,7 @@ Script to plot snapshots of the dust evolution code (Birnstiel et al. 2010)
 """
 
 def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefactors=True,
-    fluxplot=False, colormap='viridis', xlim=None, ylim=None, zlim=None, v_frag=None, ncont=20, outfile=None):
+    fluxplot=False, colormap='viridis', xlim=None, ylim=None, zlim=None, v_frag=None, ncont=20, outfile=None,context=None):
     """
     Plot a snapshots of the dust evolution code (Birnstiel et al. 2010).
     
@@ -53,6 +53,9 @@ def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
     :   if None: no output
         if '': create name automatically
         other string: use this name
+        
+    context : rc_context
+    :   use this context to plot instead of default values
     """
         
     import brewer2mpl, warnings
@@ -67,39 +70,42 @@ def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
     from constants         import AU, year, M_earth, pi, Grav, mu, m_p, k_b, sig_h2
     
     # Plotting environment
+    if context is None:
+        context = plt.rc_context()
+        plt.rcdefaults()
     
-    fs              = 18
-    lw              = 2
-    lc              = brewer2mpl.get_map('Dark2', 'Qualitative', 8).mpl_colors
-    #lc              = [[1,0,0],[0,0.5,0],[0,0,1]]
-    front           = 'k'
-    back            = 'w'
-    
-    rcParams['figure.facecolor']            = back
-    rcParams['axes.edgecolor']              = front
-    rcParams['axes.facecolor']              = front
-    rcParams['axes.linewidth']              = 1.5*lw
-    rcParams['axes.labelcolor']             = front
-    rcParams['axes.prop_cycle']             = cycler('color',lc)
-    rcParams['axes.formatter.use_mathtext'] = True
-    rcParams['xtick.color']                 = front
-    rcParams['ytick.color']                 = front
-    rcParams['xtick.major.size']            = 6*lw
-    rcParams['ytick.major.size']            = 6*lw
-    rcParams['ytick.major.width']           = 1*lw
-    rcParams['xtick.major.width']           = 1*lw
-    rcParams['xtick.minor.size']            = 3*lw
-    rcParams['ytick.minor.size']            = 3*lw
-    rcParams['ytick.minor.width']           = 0.75*lw
-    rcParams['xtick.minor.width']           = 0.75*lw
-    rcParams['lines.linewidth']             = 1.5*lw
-    rcParams['image.cmap']                  = colormap
-    rcParams['font.size']                   = fs
-    rcParams['text.color']                  = front
-    rcParams['savefig.facecolor']           = back
-    rcParams['mathtext.fontset']            = 'stix'
-    rcParams['font.family']                 = 'STIXGeneral'
-    rcParams['text.usetex']                 = True
+        fs              = 18
+        lw              = 2
+        lc              = brewer2mpl.get_map('Dark2', 'Qualitative', 8).mpl_colors
+        #lc              = [[1,0,0],[0,0.5,0],[0,0,1]]
+        front           = 'k'
+        back            = 'w'
+        
+        rcParams['figure.facecolor']            = back
+        rcParams['axes.edgecolor']              = front
+        rcParams['axes.facecolor']              = front
+        rcParams['axes.linewidth']              = 1.5*lw
+        rcParams['axes.labelcolor']             = front
+        rcParams['axes.prop_cycle']             = cycler('color',lc)
+        rcParams['axes.formatter.use_mathtext'] = True
+        rcParams['xtick.color']                 = front
+        rcParams['ytick.color']                 = front
+        rcParams['xtick.major.size']            = 6*lw
+        rcParams['ytick.major.size']            = 6*lw
+        rcParams['ytick.major.width']           = 1*lw
+        rcParams['xtick.major.width']           = 1*lw
+        rcParams['xtick.minor.size']            = 3*lw
+        rcParams['ytick.minor.size']            = 3*lw
+        rcParams['ytick.minor.width']           = 0.75*lw
+        rcParams['xtick.minor.width']           = 0.75*lw
+        rcParams['lines.linewidth']             = 1.5*lw
+        rcParams['image.cmap']                  = colormap
+        rcParams['font.size']                   = fs
+        rcParams['text.color']                  = front
+        rcParams['savefig.facecolor']           = back
+        rcParams['mathtext.fontset']            = 'stix'
+        rcParams['font.family']                 = 'STIXGeneral'
+        rcParams['text.usetex']                 = True
     
     it        = d.timesteps.searchsorted(time)
     
@@ -233,65 +239,65 @@ def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
     if zlim is None: zlim = np.log10(np.array([1e-10,1])*abs(Z).max())
         
     # plotting
-    
-    f   = plt.figure(figsize=(9,6))
-    gs  = gridspec.GridSpec(1, 2,width_ratios=[20,1])
-    ax  = plt.subplot(gs[0])
-    cax = plt.subplot(gs[1])
-    #gs.update(wspace=0.15)
-    
-    c1 = ax.contourf(X/AU,Y,(abs(Z+1e-200)), np.logspace(zlim[0],zlim[1],ncont),norm=LogNorm())
-    
-    ax.plot(d.x/AU,lim_St1,'-',label='$\mathrm{St}=1$')
-    ax.plot(d.x/AU,lim_fr, '-',label='$a_\mathrm{frag}$')
-    ax.plot(d.x/AU,lim_dr, '-',label='$a_\mathrm{drift}$')
-    
-    if fluxplot: ax.contour(X/AU,Y,Z,0,colors='w',linestyles='--')
-    
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.set_ylim(ylim)
-    ax.set_xlabel('$r$ $[\mathrm{AU}]$');
-    ax.set_axis_bgcolor(plt.cm.get_cmap(colormap).colors[0])
-    
-    leg=ax.legend(loc='upper right',prop={'size':fs},handlelength=2)
-    for t in leg.get_texts(): t.set_color('w') 
-    leg.get_frame().set_alpha(0)
-    
-    ax.text(0.5, 0.95,num2tex(d.timesteps[it]/year,2,2)+' $\mathrm{years}$', horizontalalignment='center',
-        verticalalignment='top',transform=ax.transAxes,color='k',bbox=dict(facecolor='white', alpha=0.6))
-    
-    cb = plt.colorbar(c1,cax=cax,ax=ax)
-    cb.ax.set_axis_bgcolor('none')
-    cb.solids.set_edgecolor('none')
-    cb.solids.set_linewidth(0)
-    cb.solids.set_antialiased(True)
-    cb.patch.set_visible(False)
-    #cb.locator = ticker.MaxNLocator(nbins=7)
-    cb.locator = ticker.LogLocator()
-    if fluxplot:
-        if justdrift:
-            cb.set_label('$2\pi r\Sigma_\mathrm{d}(r,a)v_\mathrm{drift}$ $[M_\oplus\,\mathrm{yr}^{-1}]$') 
-        else:
-            #cb.set_label('$2\pi r\Sigma_\mathrm{d}(r,a)v_\mathrm{d}$ $[M_\oplus\,\mathrm{yr}^{-1}]$') # Christians version
-            cb.set_label('$a \cdot \dot M (r,a)$ [$M_\oplus$ yr$^{-1}$]')
-    else:
-        cb.set_label('$a \cdot \Sigma(r,a)$ [g cm$^{-2}$]')
-    cb.update_ticks()
-    
-    if stokesaxis:
-        ax.set_ylabel('$\mathrm{Stokes number}$')
-    else:
-        ax.set_ylabel('$\mathrm{particle}$ $\mathrm{size}$ $[\mathrm{cm}]$')
+    with context:
+        f   = plt.figure(figsize=(9,6))
+        gs  = gridspec.GridSpec(1, 2,width_ratios=[20,1])
+        ax  = plt.subplot(gs[0])
+        cax = plt.subplot(gs[1])
+        #gs.update(wspace=0.15)
         
-    f.tight_layout()
-    
-    if outfile is not None:
-        if outfile == '':
-            fname = '{}_{:2.2f}Myr.pdf'.format(d.data_dir,time/1e6/year)
+        c1 = ax.contourf(X/AU,Y,(abs(Z+1e-200)), np.logspace(zlim[0],zlim[1],ncont),norm=LogNorm())
+        
+        ax.plot(d.x/AU,lim_St1,'-',label='$\mathrm{St}=1$')
+        ax.plot(d.x/AU,lim_fr, '-',label='$a_\mathrm{frag}$')
+        ax.plot(d.x/AU,lim_dr, '-',label='$a_\mathrm{drift}$')
+        
+        if fluxplot: ax.contour(X/AU,Y,Z,0,colors='w',linestyles='--')
+        
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_ylim(ylim)
+        ax.set_xlabel('$r$ $[\mathrm{AU}]$');
+        ax.set_axis_bgcolor(plt.cm.get_cmap(colormap).colors[0])
+        
+        leg=ax.legend(loc='upper right',prop={'size':fs},handlelength=2)
+        for t in leg.get_texts(): t.set_color('w') 
+        leg.get_frame().set_alpha(0)
+        
+        ax.text(0.5, 0.95,num2tex(d.timesteps[it]/year,2,2)+' $\mathrm{years}$', horizontalalignment='center',
+            verticalalignment='top',transform=ax.transAxes,color='k',bbox=dict(facecolor='white', alpha=0.6))
+        
+        cb = plt.colorbar(c1,cax=cax,ax=ax)
+        cb.ax.set_axis_bgcolor('none')
+        cb.solids.set_edgecolor('none')
+        cb.solids.set_linewidth(0)
+        cb.solids.set_antialiased(True)
+        cb.patch.set_visible(False)
+        #cb.locator = ticker.MaxNLocator(nbins=7)
+        cb.locator = ticker.LogLocator()
+        if fluxplot:
+            if justdrift:
+                cb.set_label('$2\pi r\Sigma_\mathrm{d}(r,a)v_\mathrm{drift}$ $[M_\oplus\,\mathrm{yr}^{-1}]$') 
+            else:
+                #cb.set_label('$2\pi r\Sigma_\mathrm{d}(r,a)v_\mathrm{d}$ $[M_\oplus\,\mathrm{yr}^{-1}]$') # Christians version
+                cb.set_label('$a \cdot \dot M (r,a)$ [$M_\oplus$ yr$^{-1}$]')
         else:
-            fname = outfile
-        f.savefig(fname)
+            cb.set_label('$a \cdot \Sigma(r,a)$ [g cm$^{-2}$]')
+        cb.update_ticks()
+        
+        if stokesaxis:
+            ax.set_ylabel('$\mathrm{Stokes number}$')
+        else:
+            ax.set_ylabel('$\mathrm{particle}$ $\mathrm{size}$ $[\mathrm{cm}]$')
+            
+        f.tight_layout()
+        
+        if outfile is not None:
+            if outfile == '':
+                fname = '{}_{:2.2f}Myr.pdf'.format(d.data_dir,time/1e6/year)
+            else:
+                fname = outfile
+            f.savefig(fname)
     
 if __name__ == '__main__':
     from pydisk1D          import pydisk1D
