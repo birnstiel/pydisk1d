@@ -4,9 +4,9 @@
 Script to plot snapshots of the dust evolution code (Birnstiel et al. 2010)
 """
 
-def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefactors=True,
+def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefactors=True,
     fluxplot=False, colormap='viridis', xlim=None, ylim=None, zlim=None, v_frag=None,
-    ncont=20, outfile=None,context=None,showtime=True):
+    ncont=20, outfile=None,context=None,showtime=True,figsize=None):
     """
     Plot a snapshots of the dust evolution code (Birnstiel et al. 2010).
     
@@ -16,7 +16,7 @@ def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
     d : pydisk1D instance
     :   the simulation data
     
-    time : float
+    TIME : float
     :   time of the snapshots in seconds
     
     Keywords:
@@ -60,6 +60,9 @@ def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
     
     showtime : bool
     :   whether to show the time as text box
+
+    figsize : tuple
+    :   figure size, passed to plt.figure
     """
         
     import brewer2mpl, warnings
@@ -72,6 +75,8 @@ def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
     from matplotlib        import ticker
     from uTILities         import get_St, dlydlx, num2tex
     from constants         import AU, year, M_earth, pi, Grav, mu, m_p, k_b, sig_h2
+    
+    TIME = np.array(TIME,ndmin=1)
     
     # Plotting environment
     if context is None:
@@ -111,191 +116,221 @@ def plot(d, time, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
         rcParams['font.family']                 = 'STIXGeneral'
         rcParams['text.usetex']                 = True
     
-    it        = d.timesteps.searchsorted(time)
+    xlim_none = xlim is None
+    ylim_none = ylim is None
+    zlim_none = zlim is None
     
-    # Define a fragmentation velocity function
+    if figsize is None: figsize = (9,4*len(TIME))
     
-    v_frag_in = v_frag
-    if v_frag_in is None:
-        v_frag_in = d.nml['V_FRAG']*np.ones(d.n_r)
-        v_frag = lambda N: v_frag_in
-    elif hasattr(v_frag, '__call__'):
-        pass
-    else:
-        v_frag_in = np.asarray(v_frag)
-        if v_frag_in.ndim==1:
-            v_frag = lambda N: v_frag_in
-        elif v_frag_in.ndim==2:
-            v_frag = lambda N: v_frag_in[N]
-        else:
-            raise ValueError('could not translate v_frag into a function, use float, 1D array, 2D array or function.')
-    
-    # Define fudge factors
-    
-    if usefudgefactors:
-        fudge_fr = 0.37
-        fudge_dr = 0.55
-    else:
-        fudge_fr = 1.
-        fudge_dr = 1.
-    
-    # Complicated part to get the size limits.
-    
-    if sizelimits==True:
-        RHO_S     = d.nml['RHO_S']
-        N         = it
-        sigma_d   = d.get_sigma_dust_total()[N,:]
-        gamma     = dlydlx(d.x,d.sigma_g[N])+0.5*dlydlx(d.x,d.T[N])-1.5
-        #
-        # the standard fomula with the fudge factor
-        #
-        #a_fr  = fudge_fr*2*self.sigma_g[N,:]*v_frag(N)**2./(3*pi*self.alpha[N]*RHO_S*k_b*self.T[N]/mu/m_p)
-        #
-        # calculate limits in terms of stokes numbers
-        #
-        om    = np.sqrt(Grav*d.m_star[N]/d.x**3)
-        cs    = np.sqrt(k_b*d.T[N]/mu/m_p)
-        H     = cs/om
-        n     = d.sigma_g[N]/(np.sqrt(2*pi)*H*m_p)
-        mfp   = 0.5/(sig_h2*n)
-        #
-        # fragmentation limit in terms of Stokes number
-        #
-        b       = 3.*d.alpha[N]*cs**2/v_frag(N)**2
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="invalid value encountered in sqrt")
-            lim_fr  = fudge_fr*0.5*(b-np.sqrt(b**2-4.))
-    
-        if stokesaxis:
-            #
-            # St = 1 as Stokes number
-            #
-            lim_St1    = np.ones(d.n_r)
-            #
-            # drift limit as Stokes number
-            #
-            lim_dr_e   = fudge_dr*sigma_d/d.sigma_g[N]*(d.x*om/cs)**2/np.abs(gamma) # St_drift in Epstein
-            lim_dr_St1 = fudge_dr*1./3.*sigma_d**2/d.sigma_g[N]/mfp*RHO_S*(d.x*om/cs)**4/np.abs(gamma)**2 # St_drift in Stokes 1 regime
-            if d.nml['STOKES_REGIME']==1:
-                lim_dr = np.maximum(lim_dr_e,lim_dr_St1)
-            else:
-                lim_dr = lim_dr_e
-        else:
-            #
-            # stokes number of unity in grain size
-            #
-            St_e   = 2.*d.sigma_g[N]/(pi*RHO_S)           # Stokes number = 1 in Epstein regime
-            St_St1 = (9.*d.sigma_g[N]*mfp/(2.*pi*RHO_S))  # Stokes number = 1 in first Stokes regime
-            if d.nml['STOKES_REGIME']==1:
-                lim_St1 = np.minimum(St_e,St_St1)
-            else:
-                lim_St1 = St_e
-            #
-            # convert fragmentation limit from Stokes number to particle size
-            #
-            lim_fr_e    = 2.*d.sigma_g[N]/(pi*RHO_S)*lim_fr
-            lim_fr_St1  = (9.*lim_fr*d.sigma_g[N]*mfp/(2.*pi*RHO_S) )**0.5
-            if d.nml['STOKES_REGIME']==1:
-                lim_fr = np.minimum(lim_fr_e,lim_fr_St1)
-            else:
-                lim_fr = lim_fr_e
-            #
-            # convert drift limit from Stokes number to particle size
-            #
-            lim_dr   = fudge_dr/(d.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*d.x**2.*(Grav*d.m_star[N]/d.x**3)/(np.abs(gamma)*cs**2)
-    
-    # calculate the stokes number if needed
-    
-    if fluxplot or stokesaxis:    
-        St       = np.zeros([d.n_m,d.n_r])
-        for ir in range(d.n_r):
-            St[:,ir] = get_St(d.grainsizes, d.T[it,ir], d.sigma_g[it,ir], d.x[ir], d.m_star[it], rho_s=d.nml['RHO_S'],Stokesregime=d.nml['STOKES_REGIME'],fix_error=False)
-            
-    # choose the axes
-            
-    if stokesaxis:
-        X,_ = np.meshgrid(d.x,d.grainsizes)
-        Y   = St
-    else:
-        X = d.x
-        Y = d.grainsizes
-        
-    # Get the Y-data -- flux or density.
-    
-    if fluxplot:
-        Z = 2*pi*d.x*d.sigma_d[d.n_m*it+np.arange(d.n_m),:]*(d.v_dust[d.n_m*it+np.arange(d.n_m),:]-d.v_gas[it,:]/(1.+St**2)*justdrift)
-        Z = Z/M_earth*year
-    else:
-        Z = d.sigma_d[d.n_m*it+np.arange(d.n_m),:]
-        
-    gsf=np.log(d.grainsizes[1]/d.grainsizes[0])
-    Z = Z/gsf
-    
-    # choose the plotting limits
-
-    if xlim is None: xlim = d.x[[0,-1]]
-    if ylim is None:
-        if stokesaxis:
-            ylim = [1e-5,2]
-        else:
-            ylim = d.grainsizes[[0,-1]]
-    
-    if zlim is None: zlim = np.log10(np.array([1e-10,1])*abs(Z).max())
-        
-    # plotting
+    # initialize plotting
     with context:
-        f   = plt.figure(figsize=(9,6))
-        gs  = gridspec.GridSpec(1, 2,width_ratios=[20,1])
-        ax  = plt.subplot(gs[0])
-        cax = plt.subplot(gs[1])
-        #gs.update(wspace=0.15)
+        f   = plt.figure(figsize=figsize)
+        gs  = gridspec.GridSpec(len(TIME), 2,width_ratios=[20,1])
+        cax = plt.subplot(gs[0,1])
+        #gs.update(hspace=0,wspace=0.15)
         
-        c1 = ax.contourf(X/AU,Y,(abs(Z+1e-200)), np.logspace(zlim[0],zlim[1],ncont),norm=LogNorm())
+        # Define a fragmentation velocity function
         
-        ax.plot(d.x/AU,lim_St1,'-',label='$\mathrm{St}=1$')
-        ax.plot(d.x/AU,lim_fr, '-',label='$a_\mathrm{frag}$')
-        ax.plot(d.x/AU,lim_dr, '-',label='$a_\mathrm{drift}$')
-        
-        if fluxplot: ax.contour(X/AU,Y,Z,0,colors='w',linestyles='--')
-        
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_ylim(ylim)
-        ax.set_xlabel('$r$ $[\mathrm{AU}]$');
-        ax.set_axis_bgcolor(plt.cm.get_cmap(colormap).colors[0])
-        
-        leg=ax.legend(loc='upper right',prop={'size':rcParams['font.size']},handlelength=2)
-        for t in leg.get_texts(): t.set_color('w') 
-        leg.get_frame().set_alpha(0)
-        
-        if showtime:
-            ax.text(0.5, 0.95,num2tex(d.timesteps[it]/year,2,2)+' $\mathrm{years}$', horizontalalignment='center',
-                verticalalignment='top',transform=ax.transAxes,color='k',bbox=dict(facecolor='white', alpha=0.6))
-        
-        cb = plt.colorbar(c1,cax=cax,ax=ax)
-        cb.ax.set_axis_bgcolor('none')
-        cb.solids.set_edgecolor('none')
-        cb.solids.set_linewidth(0)
-        cb.solids.set_antialiased(True)
-        cb.patch.set_visible(False)
-        #cb.locator = ticker.MaxNLocator(nbins=7)
-        cb.locator = ticker.LogLocator()
-        if fluxplot:
-            if justdrift:
-                cb.set_label('$2\pi r\Sigma_\mathrm{d}(r,a)v_\mathrm{drift}$ $[M_\oplus\,\mathrm{yr}^{-1}]$') 
+        v_frag_in = v_frag
+        if v_frag_in is None:
+            v_frag_in = d.nml['V_FRAG']*np.ones(d.n_r)
+            v_frag = lambda N: v_frag_in
+        elif hasattr(v_frag, '__call__'):
+            pass
+        else:
+            v_frag_in = np.asarray(v_frag)
+            if v_frag_in.ndim==1:
+                v_frag = lambda N: v_frag_in
+            elif v_frag_in.ndim==2:
+                v_frag = lambda N: v_frag_in[N]
             else:
-                #cb.set_label('$2\pi r\Sigma_\mathrm{d}(r,a)v_\mathrm{d}$ $[M_\oplus\,\mathrm{yr}^{-1}]$') # Christians version
-                cb.set_label('$a \cdot \dot M (r,a)$ [$M_\oplus$ yr$^{-1}$]')
-        else:
-            cb.set_label('$a \cdot \Sigma(r,a)$ [g cm$^{-2}$]')
-        cb.update_ticks()
-        
-        if stokesaxis:
-            ax.set_ylabel('$\mathrm{Stokes number}$')
-        else:
-            ax.set_ylabel('$\mathrm{particle}$ $\mathrm{size}$ $[\mathrm{cm}]$')
+                raise ValueError('could not translate v_frag into a function, use float, 1D array, 2D array or function.')
+    
+        for i_plot,time in enumerate(TIME):
+            ax  = plt.subplot(gs[i_plot,0])
+            it  = d.timesteps.searchsorted(time)
             
-        f.tight_layout()
+            # Define fudge factors
+            
+            if usefudgefactors:
+                fudge_fr = 0.37
+                fudge_dr = 0.55
+            else:
+                fudge_fr = 1.
+                fudge_dr = 1.
+            
+            # Complicated part to get the size limits.
+            
+            if sizelimits==True:
+                RHO_S     = d.nml['RHO_S']
+                N         = it
+                sigma_d   = d.get_sigma_dust_total()[N,:]
+                gamma     = dlydlx(d.x,d.sigma_g[N])+0.5*dlydlx(d.x,d.T[N])-1.5
+                #
+                # the standard fomula with the fudge factor
+                #
+                #a_fr  = fudge_fr*2*self.sigma_g[N,:]*v_frag(N)**2./(3*pi*self.alpha[N]*RHO_S*k_b*self.T[N]/mu/m_p)
+                #
+                # calculate limits in terms of stokes numbers
+                #
+                om    = np.sqrt(Grav*d.m_star[N]/d.x**3)
+                cs    = np.sqrt(k_b*d.T[N]/mu/m_p)
+                H     = cs/om
+                n     = d.sigma_g[N]/(np.sqrt(2*pi)*H*m_p)
+                mfp   = 0.5/(sig_h2*n)
+                #
+                # fragmentation limit in terms of Stokes number
+                #
+                b       = 3.*d.alpha[N]*cs**2/v_frag(N)**2
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", message="invalid value encountered in sqrt")
+                    lim_fr  = fudge_fr*0.5*(b-np.sqrt(b**2-4.))
+            
+                if stokesaxis:
+                    #
+                    # St = 1 as Stokes number
+                    #
+                    lim_St1    = np.ones(d.n_r)
+                    #
+                    # drift limit as Stokes number
+                    #
+                    lim_dr_e   = fudge_dr*sigma_d/d.sigma_g[N]*(d.x*om/cs)**2/np.abs(gamma) # St_drift in Epstein
+                    lim_dr_St1 = fudge_dr*1./3.*sigma_d**2/d.sigma_g[N]/mfp*RHO_S*(d.x*om/cs)**4/np.abs(gamma)**2 # St_drift in Stokes 1 regime
+                    if d.nml['STOKES_REGIME']==1:
+                        lim_dr = np.maximum(lim_dr_e,lim_dr_St1)
+                    else:
+                        lim_dr = lim_dr_e
+                else:
+                    #
+                    # stokes number of unity in grain size
+                    #
+                    St_e   = 2.*d.sigma_g[N]/(pi*RHO_S)           # Stokes number = 1 in Epstein regime
+                    St_St1 = (9.*d.sigma_g[N]*mfp/(2.*pi*RHO_S))  # Stokes number = 1 in first Stokes regime
+                    if d.nml['STOKES_REGIME']==1:
+                        lim_St1 = np.minimum(St_e,St_St1)
+                    else:
+                        lim_St1 = St_e
+                    #
+                    # convert fragmentation limit from Stokes number to particle size
+                    #
+                    lim_fr_e    = 2.*d.sigma_g[N]/(pi*RHO_S)*lim_fr
+                    lim_fr_St1  = (9.*lim_fr*d.sigma_g[N]*mfp/(2.*pi*RHO_S) )**0.5
+                    if d.nml['STOKES_REGIME']==1:
+                        lim_fr = np.minimum(lim_fr_e,lim_fr_St1)
+                    else:
+                        lim_fr = lim_fr_e
+                    #
+                    # convert drift limit from Stokes number to particle size
+                    #
+                    lim_dr   = fudge_dr/(d.nml['DRIFT_FUDGE_FACTOR']+1e-20)*2/pi*sigma_d/RHO_S*d.x**2.*(Grav*d.m_star[N]/d.x**3)/(np.abs(gamma)*cs**2)
+            
+            # calculate the stokes number if needed
+            
+            if fluxplot or stokesaxis:    
+                St       = np.zeros([d.n_m,d.n_r])
+                for ir in range(d.n_r):
+                    St[:,ir] = get_St(d.grainsizes, d.T[it,ir], d.sigma_g[it,ir], d.x[ir], d.m_star[it], rho_s=d.nml['RHO_S'],Stokesregime=d.nml['STOKES_REGIME'],fix_error=False)
+                    
+            # choose the axes
+                    
+            if stokesaxis:
+                X,_ = np.meshgrid(d.x,d.grainsizes)
+                Y   = St
+            else:
+                X = d.x
+                Y = d.grainsizes
+                
+            # Get the Y-data -- flux or density.
+            
+            if fluxplot:
+                Z = 2*pi*d.x*d.sigma_d[d.n_m*it+np.arange(d.n_m),:]*(d.v_dust[d.n_m*it+np.arange(d.n_m),:]-d.v_gas[it,:]/(1.+St**2)*justdrift)
+                Z = Z/M_earth*year
+            else:
+                Z = d.sigma_d[d.n_m*it+np.arange(d.n_m),:]
+                
+            gsf=np.log(d.grainsizes[1]/d.grainsizes[0])
+            Z = Z/gsf
+            
+            # choose the plotting limits
+        
+            if xlim_none: xlim = d.x[[0,-1]]
+            if ylim_none:
+                if stokesaxis:
+                    ylim = [1e-5,2]
+                else:
+                    ylim = d.grainsizes[[0,-1]]
+            
+            if zlim_none:
+                zlim = np.log10(np.array([1e-10,1])*abs(Z).max())
+        
+            # plotting
+            
+            c1 = ax.contourf(X/AU,Y,(abs(Z+1e-200)), np.logspace(zlim[0],zlim[1],ncont),norm=LogNorm())
+            
+            ax.plot(d.x/AU,lim_St1,'-',label='$\mathrm{St}=1$')
+            ax.plot(d.x/AU,lim_fr, '-',label='$a_\mathrm{frag}$')
+            ax.plot(d.x/AU,lim_dr, '-',label='$a_\mathrm{drift}$')
+            
+            if fluxplot: ax.contour(X/AU,Y,Z,0,colors='w',linestyles='--')
+            
+            ax.set_xscale('log')
+            ax.set_yscale('log')
+            ax.set_ylim(ylim)
+            
+            if i_plot==len(TIME)-1: ax.set_xlabel('$r$ $[\mathrm{AU}]$');
+            ax.set_axis_bgcolor(plt.cm.get_cmap(colormap).colors[0])
+            
+            # time box
+            
+            if showtime:
+                ax.text(0.5, 0.95,num2tex(d.timesteps[it]/year,2,2)+' $\mathrm{years}$', horizontalalignment='center',
+                    verticalalignment='top',transform=ax.transAxes,color='k',bbox=dict(facecolor='white', alpha=0.6))
+            
+            if i_plot<len(TIME)-1:
+                plt.setp(ax.get_xticklabels(), visible=False)
+                
+            if len(TIME)>1:
+                ax.get_yticklabels()[0].set_visible(False)
+                ax.get_yticklabels()[-1].set_visible(False)
+            
+            if i_plot==0:
+                
+                # legend
+                
+                leg=ax.legend(loc='upper right',prop={'size':rcParams['font.size']},handlelength=2)
+                for t in leg.get_texts(): t.set_color('k') 
+                leg.get_frame().set_alpha(0.6)
+                leg.get_frame().set_color('w')
+                leg.get_frame().set_edgecolor('k')
+        
+                # colorbar            
+            
+                cb = plt.colorbar(c1,cax=cax,ax=ax)
+                cb.ax.set_axis_bgcolor('none')
+                cb.solids.set_edgecolor('none')
+                cb.solids.set_linewidth(0)
+                cb.solids.set_antialiased(True)
+                cb.patch.set_visible(False)
+                #cb.locator = ticker.MaxNLocator(nbins=7)
+                cb.locator = ticker.LogLocator()
+                if fluxplot:
+                    if justdrift:
+                        cb.set_label('$2\pi r\Sigma_\mathrm{d}(r,a)v_\mathrm{drift}$ $[M_\oplus\,\mathrm{yr}^{-1}]$') 
+                    else:
+                        #cb.set_label('$2\pi r\Sigma_\mathrm{d}(r,a)v_\mathrm{d}$ $[M_\oplus\,\mathrm{yr}^{-1}]$') # Christians version
+                        cb.set_label('$a \cdot \dot M (r,a)$ [$M_\oplus$ yr$^{-1}$]')
+                else:
+                    cb.set_label('$a \cdot \Sigma(r,a)$ [g cm$^{-2}$]')
+                cb.update_ticks()
+            
+            if stokesaxis:
+                ax.set_ylabel('$\mathrm{Stokes number}$')
+            else:
+                ax.set_ylabel('$\mathrm{particle}$ $\mathrm{size}$ $[\mathrm{cm}]$')
+                
+        # after the time loop
+                
+        f.tight_layout(h_pad=0)
         
         if outfile is not None:
             if outfile == '':
@@ -312,7 +347,7 @@ if __name__ == '__main__':
     RTHF   = argparse.RawTextHelpFormatter
     PARSER = argparse.ArgumentParser(description=__doc__,formatter_class=RTHF)
     PARSER.add_argument('inputfile',               help='input data file or folder',type=str)
-    PARSER.add_argument('time',                    help='time of the snapshot [yr]',type=float)
+    PARSER.add_argument('time',                    help='time of the snapshot [yr]',type=float,nargs='*')
     PARSER.add_argument('-j', '--justdrift',       help='ignore the gas velocity',  action='store_true',default=False)
     PARSER.add_argument('-st','--stokesaxis',      help='turn on stokes axis',      action='store_true',default=False)
     PARSER.add_argument('-s', '--sizelimits',      help='over plot size limits',    action='store_true',default=True)
