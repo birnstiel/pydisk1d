@@ -338,16 +338,19 @@ def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
             else:
                 fname = outfile
             f.savefig(fname)
+            
+        plt.show()
     
 if __name__ == '__main__':
     from pydisk1D          import pydisk1D
     import argparse
     from constants import year
+    import numpy as np
     
     RTHF   = argparse.RawTextHelpFormatter
     PARSER = argparse.ArgumentParser(description=__doc__,formatter_class=RTHF)
     PARSER.add_argument('inputfile',               help='input data file or folder',type=str)
-    PARSER.add_argument('time',                    help='time of the snapshot [yr]',type=float,nargs='*')
+    PARSER.add_argument('time',                    help='time of the snapshot [yr]',type=float,nargs='+')
     PARSER.add_argument('-j', '--justdrift',       help='ignore the gas velocity',  action='store_true',default=False)
     PARSER.add_argument('-st','--stokesaxis',      help='turn on stokes axis',      action='store_true',default=False)
     PARSER.add_argument('-s', '--sizelimits',      help='over plot size limits',    action='store_true',default=True)
@@ -364,5 +367,7 @@ if __name__ == '__main__':
     #d=pydisk1D('/Users/birnstiel/DATA/sean/disklifetime/initial_runs/data_disklifetime_alpha-3_MD005Msun_RD200_VF1000_STR0_q04_g1_189.hdf5')
     d=pydisk1D(ARGS.inputfile)
     
-    plot(d, ARGS.time*year, outfile=ARGS.outfile, sizelimits=ARGS.sizelimits, justdrift=ARGS.justdrift, stokesaxis=ARGS.stokesaxis, usefudgefactors=ARGS.usefudgefactors,
+    time = np.array(ARGS.time,ndmin=1)
+    
+    plot(d, time*year, outfile=ARGS.outfile, sizelimits=ARGS.sizelimits, justdrift=ARGS.justdrift, stokesaxis=ARGS.stokesaxis, usefudgefactors=ARGS.usefudgefactors,
         fluxplot=ARGS.fluxplot, colormap=ARGS.colormap, xlim=ARGS.xlim, ylim=ARGS.ylim, zlim=ARGS.zlim, v_frag=None, ncont=ARGS.ncont)
