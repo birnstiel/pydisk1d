@@ -10,8 +10,6 @@ PARSER.add_argument('-i',         help='snapshot index to use for restarting, de
 PARSER.add_argument('simulation', help='HDF5 file(s) and/or simulation folders',type=str,nargs='+')
 ARGS = PARSER.parse_args()
 
-it = ARGS.i
-
 for sim in ARGS.simulation:
-    d=pydisk1D.pydisk1D(i)
-    d.write_setup(it,overwrite=True)
+    d=pydisk1D.pydisk1D(sim)
+    d.write_setup(ARGS.i,overwrite=True)
