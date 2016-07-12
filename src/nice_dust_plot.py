@@ -6,7 +6,7 @@ Script to plot snapshots of the dust evolution code (Birnstiel et al. 2010)
 
 def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefactors=True,
     fluxplot=False, colormap='viridis', xlim=None, ylim=None, zlim=None, v_frag=None,
-    ncont=20, outfile=None,context=None,showtime=True,figsize=None):
+    ncont=20, outfile=None,context=None,showtime=True,figsize=None,bgcolor=None):
     """
     Plot a snapshots of the dust evolution code (Birnstiel et al. 2010).
     
@@ -63,6 +63,9 @@ def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
 
     figsize : tuple
     :   figure size, passed to plt.figure
+    
+    bgcolor : None | color
+    :   color of the axes and figure background
     """
         
     import brewer2mpl, warnings
@@ -92,7 +95,7 @@ def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
         
         rcParams['figure.facecolor']            = back
         rcParams['axes.edgecolor']              = front
-        rcParams['axes.facecolor']              = front
+        rcParams['axes.facecolor']              = bgcolor or front
         rcParams['axes.linewidth']              = 1.5*lw
         rcParams['axes.labelcolor']             = front
         rcParams['axes.prop_cycle']             = cycler('color',lc)
@@ -111,7 +114,7 @@ def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
         rcParams['image.cmap']                  = colormap
         rcParams['font.size']                   = fs
         rcParams['text.color']                  = front
-        rcParams['savefig.facecolor']           = back
+        rcParams['savefig.facecolor']           = bgcolor or back
         rcParams['mathtext.fontset']            = 'stix'
         rcParams['font.family']                 = 'STIXGeneral'
         rcParams['text.usetex']                 = True
@@ -337,7 +340,7 @@ def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
                 fname = '{}_{:2.2f}Myr.pdf'.format(d.data_dir,time/1e6/year)
             else:
                 fname = outfile
-            f.savefig(fname)
+            f.savefig(fname,facecolor=bgcolor or 'w')
             
         plt.show()
     
