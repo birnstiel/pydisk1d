@@ -1208,6 +1208,7 @@ class pydisk1D:
         Example:
             >>> save_diskev('data')
         """
+        import numpy as np
         #
         # use input or default values
         #
@@ -1226,7 +1227,7 @@ class pydisk1D:
         for dataname in self.stored_data:
             data = getattr(self,dataname)
             if data is not None :
-                if type(data) in [int,str,float]:
+                if isinstance(data, (int,str,float)):
                     f.create_dataset(dataname, data=data)
                 else:
                     f.create_dataset(dataname, data=data, compression=4)
