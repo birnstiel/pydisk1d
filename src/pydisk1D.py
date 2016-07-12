@@ -131,17 +131,21 @@ class pydisk1D:
         self.AU   = AU
         self.year = year
 
-    def __add__(self,b):
+    def join(self,b,skip=1):
         """
-        Method to concatenate simulations. Will not return new object, but
-        add the second to the first one, i.e. `sim1+sim2` will result in all
-        the `sim2` data being appended to the respective fields of `sim1`.
+        Method to concatenate simulations. Will add the timesteps of the new instance b
+        to the object itself.
         
         Arguments:
         ----------
         
         b: pydisk1D object
         :    the data to be added to the current object
+        
+        Keywords:
+        ---------
+        skip : int
+        :   how many time steps of the added array to skip
         
         """
         #
@@ -154,7 +158,7 @@ class pydisk1D:
         #
         # merge specific keys
         #
-        self.nml['INTERVAL'] += 1
+        self.nml['INTERVAL'] += 1-skip
         #
         # redefine data_dir
         #
@@ -162,7 +166,7 @@ class pydisk1D:
         #
         # redefine number of snapshots
         #
-        self.n_t=self.n_t+b.n_t
+        self.n_t=self.n_t-skip+b.n_t
         #
         # check if those agree
         #
@@ -203,7 +207,7 @@ class pydisk1D:
             'dust_flux_o',
             'dust_flux_o_e']
         for k in addkeys0D:
-            setattr(self, k, append(getattr(self,k),getattr(b,k)))
+            setattr(self, k, append(getattr(self,k),getattr(b,k)[skip:]))
         #
         # merge the 1D and 2D arrays
         #
@@ -222,7 +226,7 @@ class pydisk1D:
             'sigma_dead']
         addkeys2D = ['v_dust','sigma_d']
         for k in addkeys1D+addkeys2D:
-            setattr(self, k, append(getattr(self,k),getattr(b,k),0))
+            setattr(self, k, append(getattr(self,k),getattr(b,k)[skip:],0))
 
     def sigma_d_movie(self,i0=0,i1=-1,steps=1,dpi=None,**kwargs):
         """
