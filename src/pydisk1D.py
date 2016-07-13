@@ -155,6 +155,7 @@ class pydisk1D:
         for key,val in self.nml.iteritems():
             if val!=b.nml[key] and key not in merge_keys:
                 print('WARNING: nml entries for \'%s\' differ!'%key)
+        stored_data = list(self.stored_data)
         #
         # merge specific keys
         #
@@ -183,6 +184,7 @@ class pydisk1D:
             'kappa_r_r',
             'kappa_p_r']
         for k in eqkeys:
+            stored_data.remove(k)
             if any(array(getattr(self,k)!=getattr(self,k),ndmin=1)):
                 print('WARNING: key \'%s\' is not identical'%k)
         #
@@ -207,6 +209,7 @@ class pydisk1D:
             'dust_flux_o',
             'dust_flux_o_e']
         for k in addkeys0D:
+            stored_data.remove(k)
             setattr(self, k, append(getattr(self,k),getattr(b,k)[skip:]))
         #
         # merge the 1D and 2D arrays
@@ -226,7 +229,23 @@ class pydisk1D:
             'sigma_dead']
         addkeys2D = ['v_dust','sigma_d']
         for k in addkeys1D+addkeys2D:
+            stored_data.remove(k)
             setattr(self, k, append(getattr(self,k),getattr(b,k)[skip:],0))
+        
+        # ignore some of the data
+        
+        for k in ['stored_data','data_dir','n_t']:
+            stored_data.remove(k)
+            
+        # try to merge what remains
+        
+        for k in stored_data:
+            if k == 'sig_p-Np-sig_d_trap-Macc_trap-Macc_tot':
+                setattr(self, k, append(getattr(self,k),getattr(b,k)[7*(self.n_r-3)*skip:],0))
+            else:
+                print('Unknown stored data: "{}" - will merge without skip')
+                setattr(self, k, append(getattr(self,k),getattr(b,k),0))
+        
 
     def sigma_d_movie(self,i0=0,i1=-1,steps=1,dpi=None,**kwargs):
         """
