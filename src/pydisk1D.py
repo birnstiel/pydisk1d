@@ -241,7 +241,11 @@ class pydisk1D:
         
         for k in stored_data:
             if k == 'sig_p-Np-sig_d_trap-Macc_trap-Macc_tot':
-                setattr(self, k, append(getattr(self,k),getattr(b,k)[7*(self.n_r-3)*skip:],0))
+                offs = getattr(self,k)[-7*(self.n_r-3):].reshape(1,self.n_r-3,7)*[1,1,0,0,0,0,0]
+                newdata = getattr(b,k)[7*(b.n_r-3)*skip:].reshape(-1,b.n_r-3,7)
+                newdata = newdata+offs
+                newdata = newdata.flatten()
+                setattr(self, k, append(getattr(self,k),newdata,0))
             else:
                 print('Unknown stored data: "{}" - will merge without skip')
                 setattr(self, k, append(getattr(self,k),getattr(b,k),0))
