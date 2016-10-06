@@ -86,8 +86,7 @@ def merge(lists,skip=1,outdir='merge'):
             shutil.move(fname+'.hdf5',os.path.join(outdir,fname+'.hdf5'))
         
         # print progress
-        
-        sys.stdout.write("\r{}: {:2.2%}".format(fname,float(i_file)/(len(initial_files)-1)))
+        sys.stdout.write("\r{}: {:2.2%}".format(fname,(i_file+1.)/len(initial_files)))
         sys.stdout.flush()
         
 if __name__=='__main__':
