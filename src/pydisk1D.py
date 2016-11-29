@@ -212,7 +212,7 @@ class pydisk1D:
             stored_data.remove(k)
             setattr(self, k, append(getattr(self,k),getattr(b,k)[skip:]))
         #
-        # merge the 1D and 2D arrays
+        # merge the 1D  arrays
         #
         addkeys1D = [
             'sigma_g',
@@ -227,10 +227,16 @@ class pydisk1D:
             'nu',
             'sig_dot_t',
             'sigma_dead']
-        addkeys2D = ['v_dust','sigma_d']
-        for k in addkeys1D+addkeys2D:
+        for k in addkeys1D:
             stored_data.remove(k)
             setattr(self, k, append(getattr(self,k),getattr(b,k)[skip:],0))
+        #
+        # merge the 2D arrays
+        #
+        addkeys2D = ['v_dust','sigma_d']
+        for k in addkeys2D:
+            stored_data.remove(k)
+            setattr(self, k, append(getattr(self,k),getattr(b,k)[self.n_m*skip:],0))
         
         # ignore some of the data
         
