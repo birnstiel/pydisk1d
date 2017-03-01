@@ -1,5 +1,5 @@
 from numpy import array,append,arange,trapz,pi,zeros,ceil,sqrt,log,log10,minimum,\
-maximum,meshgrid,savetxt,isnan,interp,loadtxt,random,ndarray,sum,ones,asarray
+maximum,meshgrid,savetxt,isnan,interp,loadtxt,random,ndarray,sum,ones,asarray,bytes_
 import matplotlib,h5py,re,glob,os,sys
 from uTILities import parse_nml, dlydlx,write_nml,my_colorbar
 from constants import AU,year, k_b, m_p, mu,Grav, sig_h2
@@ -93,7 +93,7 @@ class pydisk1D:
         self.stokesnumber        = None
 
         if data_dir=='':
-            print "no data directory given, will not read data"
+            print("no data directory given, will not read data")
         else:
             #
             # first check if the folder is there 
@@ -116,7 +116,7 @@ class pydisk1D:
             #
             if h_file_exist or m_file_exist:
                 if folder_exist:
-                    print "preferring to read from file instead of folder"
+                    print("preferring to read from file instead of folder")
                 if h_file_exist:
                     self.load_diskev(filename+".hdf5")
                 elif m_file_exist:
@@ -152,7 +152,7 @@ class pydisk1D:
         # compare the nml
         #
         merge_keys = ['T_0','INTERVAL','M_STAR_INITIAL','T_COAG_START']
-        for key,val in self.nml.iteritems():
+        for key,val in self.nml.items():
             if val!=b.nml[key] and key not in merge_keys:
                 print('WARNING: nml entries for \'%s\' differ!'%key)
         stored_data = list(self.stored_data)
@@ -323,7 +323,7 @@ class pydisk1D:
         ret=subprocess.call(['ffmpeg','-i',dirname+os.sep+'img_%03d.png','-c:v','libx264','-crf','20','-maxrate','400k','-pix_fmt','yuv420p','-bufsize','1835k',moviename])
 
         if ret==0:
-            print "Movie created, cleaning up ..."
+            print("Movie created, cleaning up ...")
             for i,i_s in enumerate(arange(i0,i1+1,steps)):
                 os.remove(dirname+os.sep+'img_%3.3i.png'%i)
             os.removedirs(dirname)
@@ -353,7 +353,8 @@ class pydisk1D:
         # check if file exists
         #
         try:
-            open(filename)
+            fid=open(filename)
+            fid.close()
         except IOError as e:
             print("({})".format(e))
         #
@@ -422,105 +423,106 @@ class pydisk1D:
             f = h5py.File(filename,'r')
             if 'stored_data' in f.keys():
                 for varname in f['stored_data'][()]:
+                    if type(varname)==bytes_: varname=varname.decode()
                     setattr(self,varname,f[varname][()])
             else:
                 #
                 # all the try/except stuff is for reading in an file which lacks most of the variables
                 # but which can be used as input of the vertical structure simulations via vertical_structure_from_data
                 #
-                try: self.data_dir         	  = str(f['data_dir'][...])
+                try: self.data_dir         	  = f['data_dir'][()].decode()
                 except: pass
-                try: self.n_m              	  = f['n_m'][...]
+                try: self.n_m              	  = f['n_m'][()]
                 except: pass
-                try: self.D_grain1             = f['D_grain1'][...]
+                try: self.D_grain1             = f['D_grain1'][()]
                 except: pass
-                try: self.T                    = f['T'][...]
+                try: self.T                    = f['T'][()]
                 except: pass
-                try: self.accretion_dust       = f['accretion_dust'][...]
+                try: self.accretion_dust       = f['accretion_dust'][()]
                 except: pass
-                try: self.accretion_dust_e     = f['accretion_dust_e'][...]
+                try: self.accretion_dust_e     = f['accretion_dust_e'][()]
                 except: pass
-                try: self.accretion_gas        = f['accretion_gas'][...]
+                try: self.accretion_gas        = f['accretion_gas'][()]
                 except: pass
-                try: self.alpha                = f['alpha'][...]
+                try: self.alpha                = f['alpha'][()]
                 except: pass
-                try: self.alpha_dead           = f['alpha_dead'][...]
+                try: self.alpha_dead           = f['alpha_dead'][()]
                 except: pass
-                try: self.d_evap               = f['d_evap'][...]
+                try: self.d_evap               = f['d_evap'][()]
                 except: pass
-                #try: self.dust_flux        = f['dust_flux'][...]
+                #try: self.dust_flux        = f['dust_flux'][()]
                 #except: pass
-                try: self.dust_flux_o          = f['dust_flux_o'][...]
+                try: self.dust_flux_o          = f['dust_flux_o'][()]
                 except: pass
-                try: self.dust_flux_o_e        = f['dust_flux_o_e'][...]
+                try: self.dust_flux_o_e        = f['dust_flux_o_e'][()]
                 except: pass
-                try: self.fallen_disk_mass     = f['fallen_disk_mass'][...]
+                try: self.fallen_disk_mass     = f['fallen_disk_mass'][()]
                 except: pass
-                try: self.flim                 = f['flim'][...]
+                try: self.flim                 = f['flim'][()]
                 except: pass
-                try: self.flim_dead            = f['flim_dead'][...]
+                try: self.flim_dead            = f['flim_dead'][()]
                 except: pass
-                try: self.gas_flux_o           = f['gas_flux_o'][...]
+                try: self.gas_flux_o           = f['gas_flux_o'][()]
                 except: pass
-                try: self.grainsizes           = f['grainsizes'][...]
+                try: self.grainsizes           = f['grainsizes'][()]
                 except: pass
-                try: self.m_dot_star           = f['m_dot_star'][...]
+                try: self.m_dot_star           = f['m_dot_star'][()]
                 except: pass
-                try: self.m_grid               = f['m_grid'][...]
+                try: self.m_grid               = f['m_grid'][()]
                 except: pass
-                try: self.m_star               = f['m_star'][...]
+                try: self.m_star               = f['m_star'][()]
                 except: pass
-                try: self.n_r                  = f['n_r'][...]
+                try: self.n_r                  = f['n_r'][()]
                 except: pass
-                try: self.n_t                  = f['n_t'][...]
+                try: self.n_t                  = f['n_t'][()]
                 except: pass
-                try: self.nu                   = f['nu'][...]
+                try: self.nu                   = f['nu'][()]
                 except: pass
-                try: self.peak_position        = f['peak_position'][...]
+                try: self.peak_position        = f['peak_position'][()]
                 except: pass
-                try: self.r_centri             = f['r_centri'][...]
+                try: self.r_centri             = f['r_centri'][()]
                 except: pass
-                try: self.r_min                = f['r_min'][...]
+                try: self.r_min                = f['r_min'][()]
                 except: pass
-                try: self.r_snow               = f['r_snow'][...]
+                try: self.r_snow               = f['r_snow'][()]
                 except: pass
-                try: self.sig_dot_t            = f['sig_dot_t'][...]
+                try: self.sig_dot_t            = f['sig_dot_t'][()]
                 except: pass
-                try: self.sigma_coag           = f['sigma_coag'][...]
+                try: self.sigma_coag           = f['sigma_coag'][()]
                 except: pass
-                try: self.sigma_d              = f['sigma_d'][...]
+                try: self.sigma_d              = f['sigma_d'][()]
                 except: pass
-                try: self.sigma_dead           = f['sigma_dead'][...]
+                try: self.sigma_dead           = f['sigma_dead'][()]
                 except: pass
-                try: self.sigma_g              = f['sigma_g'][...]
+                try: self.sigma_g              = f['sigma_g'][()]
                 except: pass
-                try: self.steps                = f['steps'][...]
+                try: self.steps                = f['steps'][()]
                 except: pass
-                try: self.timesteps            = f['timesteps'][...]
+                try: self.timesteps            = f['timesteps'][()]
                 except: pass
-                try: self.v_dust               = f['v_dust'][...]
+                try: self.v_dust               = f['v_dust'][()]
                 except: pass
-                try: self.v_gas                = f['v_gas'][...]
+                try: self.v_gas                = f['v_gas'][()]
                 except: pass
-                try: self.v_gas_dead           = f['v_gas_dead'][...]
+                try: self.v_gas_dead           = f['v_gas_dead'][()]
                 except: pass
-                try: self.x                    = f['x'][...]
+                try: self.x                    = f['x'][()]
                 except: pass
-                try: self.x05                  = f['x05'][...]
+                try: self.x05                  = f['x05'][()]
                 except: pass
             #
             # now load the namelist variables
             #
             self.nml = dict()
             try:
-                for key,val in f['nml'].iteritems(): self.nml[key]=float(val[...])
+                for key in f['nml'].keys(): self.nml[key]=float(f['nml'][key][()])
             except:
                 pass
         #
         # close the file
         #
         if hasattr(f,'close'): f.close()
-        print " ... Done!"
+        print(" ... Done!")
 
     def get_m_gas(self):
         """
@@ -1177,7 +1179,7 @@ class pydisk1D:
         # now read the name list if it exists
         #
         if os.path.isfile(data_dir+"usedinput.nml"):
-            print "    reading namelist"
+            print("    reading namelist")
             self.nml          = parse_nml(data_dir+"usedinput.nml")
         #
         # now get some constants
@@ -1224,7 +1226,7 @@ class pydisk1D:
         if self.peak_position is not None: self.peak_position.astype('int32')
         if self.r_min is not None: self.r_min.astype('int32')
         if self.steps is not None: self.steps.astype('int32')
-        print "... Done"
+        print("... Done")
 
     def save_diskev(self,data_dir=''):
         """
@@ -1237,7 +1239,6 @@ class pydisk1D:
         Example:
             >>> save_diskev('data')
         """
-        import numpy as np
         #
         # use input or default values
         #
@@ -1265,7 +1266,7 @@ class pydisk1D:
         #
         if self.nml is not None:
             grp=f.create_group("nml")
-            for key,val in self.nml.iteritems():
+            for key,val in self.nml.items():
                 grp.create_dataset(key, data=val)
         #
         # close file
@@ -1311,7 +1312,7 @@ class pydisk1D:
                     print('output directory exists, aborting')
                     return
                 while inp not in ['','y','n']:
-                    inp=raw_input('\'%s\' already exists, overwrite [Y/n] '%dirname).lower()
+                    inp=input('\'%s\' already exists, overwrite [Y/n] '%dirname).lower()
                     if inp=='n': 
                         print('operation cancelled')
                         return
@@ -1362,7 +1363,7 @@ class pydisk1D:
         if os.path.isdir(out_dir):
             yn = None
             while yn not in ['y','n']:
-                yn=raw_input('Directory exists, overwrite? [y/n] ').lower()
+                yn=input('Directory exists, overwrite? [y/n] ').lower()
                 if yn=='y':
                     shutil.rmtree(out_dir)
                 elif yn=='n':
@@ -1370,7 +1371,7 @@ class pydisk1D:
             os.mkdir(out_dir)
         else:
             if out_dir==None:
-                out_dir=raw_input('Please provide name for output directory: ')
+                out_dir=input('Please provide name for output directory: ')
                 out_dir=os.path.expanduser(out_dir)
             #
             # create directory
@@ -1378,7 +1379,7 @@ class pydisk1D:
             try:
                 os.mkdir(out_dir)
             except:
-                print 'failed to create directory \''+out_dir+'\''
+                print('failed to create directory \''+out_dir+'\'')
                 sys.exit(2)
         #
         # now write the data to the files
@@ -1580,7 +1581,7 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
             #
             # file write-out
             #
-            fid=file(outfile,'w')
+            fid=open(outfile,'w')
             N.flatten(order='F').tofile(fid, sep="\n", format="%12.12e")
             fid.close()
             #
@@ -1722,13 +1723,13 @@ def setup_diskev(sim_name,R,T,sig_g,alpha,inputvars,sig_d=None,savedir='.',res=1
         #
         # change it ...
         #
-        for n,v in inputvars.iteritems():
+        for n,v in inputvars.items():
             if n in nml:
                 nml[n] = v
             else:
                 print('ERROR: unknown variable %s'%n)
                 sys.exit(1)
-        for n,v in nml.iteritems():
+        for n,v in nml.items():
             if v==placeholder:
                 print('ERROR: %s needs to be set'%n)
                 sys.exit(1)            

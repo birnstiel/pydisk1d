@@ -3,7 +3,7 @@
 Merges hdf5 data files from several runs based on the given order and the file name.
 """
 import glob, os, shutil, argparse, sys
-from cStringIO import StringIO
+from io import StringIO
 from pydisk1D import pydisk1D
 
 # to make loading / saving the data quiet
