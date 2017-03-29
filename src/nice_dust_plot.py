@@ -6,7 +6,7 @@ Script to plot snapshots of the dust evolution code (Birnstiel et al. 2010)
 
 def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefactors=True,
     fluxplot=False, colormap='viridis', xlim=None, ylim=None, zlim=None, v_frag=None,
-    ncont=20, outfile=None,context=None,showtime=True,figsize=None,bgcolor=None):
+    ncont=20, outfile=None,context=None,showtime=True,figsize=None,bgcolor=None,xlog=True,ylog=True):
     """
     Plot a snapshots of the dust evolution code (Birnstiel et al. 2010).
     
@@ -14,58 +14,64 @@ def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
     ---------
     
     d : pydisk1D instance
-    :   the simulation data
+        the simulation data
     
     TIME : float
-    :   time of the snapshots in seconds
+        time of the snapshots in seconds
     
     Keywords:
     ---------
     
     justdrift : bool
-    :   if true, remove the gas velocity from the drift speed (for flux plot)
+        if true, remove the gas velocity from the drift speed (for flux plot)
     
     stokesaxis : bool
-    :   whether or not to plot the y-axis as stokes number or particle size
+        whether or not to plot the y-axis as stokes number or particle size
     
     sizelimits : bool
-    :   whether or not to overplot the size limits
+        whether or not to overplot the size limits
     
     usefudgefactors  : bool
-    :   whether or not to include the fudge factors in the size limits
+        whether or not to include the fudge factors in the size limits
     
     fluxplot : bool
-    :   whether or not to plot the flux density instead of the density
+        whether or not to plot the flux density instead of the density
     
     colormap : string
-    :   name of the colormap
+        name of the colormap
     
     [x,y,z]lim : 2 element array like
-    :   the limits
+        the limits
         
     v_frag : [None|np.array|function]
-    :   None: use constant from code, otherwise provide 1D, 2D array or function
+        None: use constant from code, otherwise provide 1D, 2D array or function
         that takes the time index as only argument
         
     ncont : int
-    :   number of contour levels
+        number of contour levels
     
     outfile : [str|None]
-    :   if None: no output
+        if None: no output
         if '': create name automatically
         other string: use this name
         
     context : rc_context
-    :   use this context to plot instead of default values
+        use this context to plot instead of default values
     
     showtime : bool
-    :   whether to show the time as text box
+        whether to show the time as text box
 
     figsize : tuple
-    :   figure size, passed to plt.figure
+        figure size, passed to plt.figure
     
     bgcolor : None | color
-    :   color of the axes and figure background
+        color of the axes and figure background
+    
+    xlog : bool
+        whether to use log scaling on the x-axis
+        
+    ylog : bool
+        whether to use log scaling on the y-axis
     """
         
     import brewer2mpl, warnings
@@ -276,8 +282,8 @@ def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
             
             if fluxplot: ax.contour(X/AU,Y,Z,0,colors='w',linestyles='--')
             
-            ax.set_xscale('log')
-            ax.set_yscale('log')
+            if xlog: ax.set_xscale('log')
+            if ylog: ax.set_yscale('log')
             ax.set_ylim(ylim)
             
             if i_plot==len(TIME)-1: ax.set_xlabel('$r$ $[\mathrm{AU}]$');
