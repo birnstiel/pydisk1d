@@ -1248,30 +1248,30 @@ class pydisk1D:
         # open file for writing 
         #
         filename = data_dir.replace('/','')+".hdf5"
-        f = h5py.File(filename,mode='w')
-        sys.stdout.write('saving as '+filename)
-        sys.stdout.flush()
-        #
-        # write data into file
-        #
-        for dataname in self.stored_data:
-            data = getattr(self,dataname)
-            if data is not None :
-                if isinstance(data, (int,str,float)):
-                    f.create_dataset(dataname, data=data)
-                else:
-                    f.create_dataset(dataname, data=data, compression=4)
-        #
-        # save the nml
-        #
-        if self.nml is not None:
-            grp=f.create_group("nml")
-            for key,val in self.nml.items():
-                grp.create_dataset(key, data=val)
-        #
-        # close file
-        #
-        f.close()
+        with h5py.File(filename,mode='w') as f:
+            sys.stdout.write('saving as '+filename)
+            sys.stdout.flush()
+            #
+            # write data into file
+            #
+            for dataname in self.stored_data:
+                data = getattr(self,dataname)
+                if data is not None :
+                    if isinstance(data, (int,float)):
+                        f.create_dataset(dataname, data=data)
+                    elif isinstance(data, str):
+                        f.attrs[dataname] = data.encode('utf8')
+                    elif isinstance(data,list):
+                        f.attrs[dataname] = [a.encode('utf8') for a in data]
+                    else:
+                        f.create_dataset(dataname, data=data, compression=4)
+            #
+            # save the nml
+            #
+            if self.nml is not None:
+                grp=f.create_group("nml")
+                for key,val in self.nml.items():
+                    grp.create_dataset(key, data=val)
         print(' ... Done!')
         
     # -----------------------------------------------------------------------------
