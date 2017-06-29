@@ -6,7 +6,7 @@ Script to plot snapshots of the dust evolution code (Birnstiel et al. 2010)
 
 def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefactors=True,
     fluxplot=False, colormap='viridis', xlim=None, ylim=None, zlim=None, v_frag=None,
-    ncont=20, outfile=None,context=None,showtime=True,figsize=None,bgcolor=None,xlog=True,ylog=True):
+    ncont=20, outfile=None,context=None,showtime=True,figsize=None,bgcolor=None,figbgcolor=None,xlog=True,ylog=True):
     """
     Plot a snapshots of the dust evolution code (Birnstiel et al. 2010).
     
@@ -120,7 +120,7 @@ def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
         rcParams['image.cmap']                  = colormap
         rcParams['font.size']                   = fs
         rcParams['text.color']                  = front
-        rcParams['savefig.facecolor']           = bgcolor or back
+        rcParams['savefig.facecolor']           = figbgcolor or back
         rcParams['mathtext.fontset']            = 'stix'
         rcParams['font.family']                 = 'STIXGeneral'
         rcParams['text.usetex']                 = True
@@ -287,7 +287,7 @@ def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
             ax.set_ylim(ylim)
             
             if i_plot==len(TIME)-1: ax.set_xlabel('$r$ $[\mathrm{AU}]$');
-            ax.set_axis_bgcolor(plt.cm.get_cmap(colormap).colors[0])
+            ax.set_axis_bgcolor(bgcolor)
             
             # time box
             
@@ -346,7 +346,7 @@ def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
                 fname = '{}_{:2.2f}Myr.pdf'.format(d.data_dir,time/1e6/year)
             else:
                 fname = outfile
-            f.savefig(fname,facecolor=bgcolor or 'w')
+            f.savefig(fname,facecolor=figbgcolor or 'w')
             
         plt.show()
     
