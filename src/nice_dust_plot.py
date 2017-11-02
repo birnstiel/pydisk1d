@@ -349,6 +349,10 @@ def plot(d, TIME, sizelimits=True, justdrift=True, stokesaxis=False, usefudgefac
             f.savefig(fname,facecolor=figbgcolor or 'w')
             
         plt.show()
+        
+        # return the figure
+        
+        return f
     
 if __name__ == '__main__':
     from pydisk1D          import pydisk1D

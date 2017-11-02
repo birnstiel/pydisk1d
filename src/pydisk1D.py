@@ -10,7 +10,7 @@ class pydisk1D:
     """
     Class to read, load, save and plot the simulation
     results of the diskev code by Til Birnstiel.
-    
+
     For questions and comments please write
     to tbirnstiel@cfa.harvard.edu
 
@@ -31,10 +31,10 @@ class pydisk1D:
     """
 
     def __init__(self,data_dir="",**kwargs):
-        """ 
+        """
         The initialization routine. Without argument, nothing happens.
         With argument, a directory or file is already loaded.
-        
+
         Arguments:
         	data_dir	can be either a file or a directory. The
         				simulation name is parsed from the input
@@ -96,7 +96,7 @@ class pydisk1D:
             print("no data directory given, will not read data")
         else:
             #
-            # first check if the folder is there 
+            # first check if the folder is there
             #
             folder_exist = os.path.isdir(data_dir)
             #
@@ -124,7 +124,7 @@ class pydisk1D:
             elif folder_exist:
                 self.read_diskev(data_dir,**kwargs)
             else:
-                raise Exception('Input error', 'Neither file nor folder to read data was found!') 
+                raise Exception('Input error', 'Neither file nor folder to read data was found!')
         #
         # now set some constants
         #
@@ -135,18 +135,18 @@ class pydisk1D:
         """
         Method to concatenate simulations. Will add the timesteps of the new instance b
         to the object itself.
-        
+
         Arguments:
         ----------
-        
+
         b: pydisk1D object
         :    the data to be added to the current object
-        
+
         Keywords:
         ---------
         skip : int
         :   how many time steps of the added array to skip
-        
+
         """
         #
         # compare the nml
@@ -237,14 +237,14 @@ class pydisk1D:
         for k in addkeys2D:
             stored_data.remove(k)
             setattr(self, k, append(getattr(self,k),getattr(b,k)[self.n_m*skip:],0))
-        
+
         # ignore some of the data
-        
+
         for k in ['stored_data','data_dir','n_t']:
             stored_data.remove(k)
-            
+
         # try to merge what remains
-        
+
         for k in stored_data:
             if k == 'sig_p-Np-sig_d_trap-Macc_trap-Macc_tot':
                 offs = getattr(self,k)[-7*(self.n_r-3):].reshape(1,self.n_r-3,7)*[1,1,0,0,0,0,0]
@@ -255,33 +255,33 @@ class pydisk1D:
             else:
                 print('Unknown stored data: "{}" - will merge without skip')
                 setattr(self, k, append(getattr(self,k),getattr(b,k),0))
-        
+
 
     def sigma_d_movie(self,i0=0,i1=-1,steps=1,dpi=None,**kwargs):
         """
         This uses the other sub-routine `plot_sigma_d` to produce
         a movie of the time evolution.
-        
+
         Keywords:
         ---------
-        
+
         i0 : int
         : index of the first snapshot
-        
+
         i1 : int
         : index of the last snapshot
-        
+
         steps : int
         : step size between each frame
 
         dpi : int
         : resolution of the image frames
-        
+
         Examples:
         ---------
-        
+
             d.plot_sigma_d(N=-1,cmap=get_cmap('YlGnBu_r'),clevel=arange(-9,2),ax_color='w',bg_color='k',xl=[0.3,500],fs=14)
-        
+
         The **kwargs are passed to `plot_sigma_d
         """
         from matplotlib.pyplot import figure,savefig,clf,close,rcParams
@@ -318,7 +318,7 @@ class pydisk1D:
         moviename = str(self.data_dir)
         if moviename=='' or moviename is None: moviename='movie'
         if moviename[-1] == os.sep: moviename = moviename[0:-1]
-        
+
         moviename = os.path.basename(moviename)+'.mp4'
         ret=subprocess.call(['ffmpeg','-i',dirname+os.sep+'img_%03d.png','-c:v','libx264','-crf','20','-maxrate','400k','-pix_fmt','yuv420p','-bufsize','1835k',moviename])
 
@@ -328,9 +328,70 @@ class pydisk1D:
                 os.remove(dirname+os.sep+'img_%3.3i.png'%i)
             os.removedirs(dirname)
 
+    def make_nice_movie(self,transparent=False,cont=None):
+        """
+        Uses the nicer external routine for plotting dust surface density evolution.
+
+        Arguments
+        ---------
+
+        d : instance of pydisk1d
+            the dust simulation to plot
+        """
+
+        import nice_dust_plot, subprocess
+        import matplotlib.pyplot as plt
+
+        cmap=plt.get_cmap('viridis')
+
+        # background: white
+        cmap.colors[0]=[1,1,1]
+
+        # background: transparent
+        col = [c+[1] for c in cmap.colors]
+        col[0][-1] = 0
+
+        cmap.colors = col
+        cmap=plt.get_cmap('viridis')
+
+        # create the frames
+
+        frames='frames'
+        if not os.path.isdir(frames): os.mkdir(frames)
+
+        if cont is None:
+            cont = plt.rc_context(rc={'font.size': 18,'lines.linewidth':2})
+
+        if transparent:
+            for i,t in enumerate(self.timesteps):
+                nice_dust_plot.plot(self, t, sizelimits=True,usefudgefactors=False,colormap='viridis', xlim=[0.3,500],zlim=[-9,2],ncont=50, outfile=os.path.join(frames,'img{:03d}.png').format(i), context=cont, showtime=True, figsize=(10,6),bgcolor='none')
+                sys.stdout.write("\r{}: {:2.2%}".format('frames',(i+1.0)/self.n_t))
+                sys.stdout.flush()
+                close()
+                print("")
+        else:
+            for i,t in enumerate(self.timesteps):
+                nice_dust_plot.plot(self, t, sizelimits=True,usefudgefactors=False,colormap='viridis', xlim=[0.3,500],zlim=[-9,2],ncont=50, outfile=os.path.join(frames,'img{:03d}.jpg').format(i), context=cont, showtime=True, figsize=(10,6),bgcolor='w')
+                sys.stdout.write("\r{}: {:2.2%}".format('frames',(i+1.0)/self.n_t))
+                sys.stdout.flush()
+                plt.close()
+            print("")
+
+        # make the movie
+
+        moviename = str(self.data_dir)
+        if moviename=='' or moviename is None: moviename='movie'
+        if moviename[-1] == os.sep: moviename = moviename[0:-1]
+        moviename = os.path.basename(moviename)+'.mp4'
+
+        if os.path.isfile(moviename):
+            os.unlink(moviename)
+
+        ret=subprocess.call(['ffmpeg','-i',frames +os.sep+'img%03d.jpg', '-c:v','libx264','-crf','20','-maxrate','400k','-pix_fmt','yuv420p','-bufsize','1835k',moviename])
+
     def load_diskev(self,filename="data/"):
         """
-        load the data of a disk evolution simulation 
+        load the data of a disk evolution simulation
         Arguments:
             filename    the file name of the .hdf5 data file
         Examples:
@@ -339,7 +400,7 @@ class pydisk1D:
             >>> D.load_diskev('data_sim1.hdf5')
         """
         #
-        # format the filename 
+        # format the filename
         #
         if filename[-1]==os.sep:
             filename=filename[0:-1]
@@ -358,7 +419,7 @@ class pydisk1D:
         except IOError as e:
             print("({})".format(e))
         #
-        # open file for reading 
+        # open file for reading
         #
         sys.stdout.write("loading from %s"%filename)
         sys.stdout.flush()
@@ -369,7 +430,7 @@ class pydisk1D:
             import scipy.io
             f = scipy.io.loadmat(filename)
             #
-            # the data from the .mat files needs to be transposed 
+            # the data from the .mat files needs to be transposed
             #
             self.data_dir             = f['dir'+ending][0]
             self.n_m                  = int(f['grains'][...])
@@ -527,7 +588,7 @@ class pydisk1D:
     def get_m_gas(self):
         """
         Calculates and returns the total gas mass as function of time
-        
+
         Arguments:
         None
         Example:
@@ -536,11 +597,11 @@ class pydisk1D:
         """
         m_g = array([trapz(2*pi*self.x*sig_g,self.x) for sig_g in self.sigma_g])
         return m_g
-       
+
     def get_m_dust(self):
         """
         Calculates and returns the total dust mass as function of time
-        
+
         Arguments:
         None
         Example:
@@ -556,7 +617,7 @@ class pydisk1D:
     def get_sigma_dust_total(self):
         """
         Calculates and returns the total dust mass as function of time
-        
+
         Arguments:
         None
         Example:
@@ -565,11 +626,11 @@ class pydisk1D:
         """
         sig_d_t = array([sum(self.sigma_d[it*self.n_m+arange(self.n_m),:],0) for it in arange(self.n_t)])
         return sig_d_t
-    
+
     def get_d2g(self):
         """
         Calculates and returns the total dust mass as function of time
-        
+
         Arguments:
         None
         Example:
@@ -579,13 +640,13 @@ class pydisk1D:
         return self.get_sigma_dust_total()/self.sigma_g
 
     def plot_d2g_widget(self,N=0):
-        """ 
+        """
         Produces a plot-widget of the dust-to-gas mass ratio.
         Arguments:
             N  = optional: start with snapshot #N
         Example:
             >>> D.plot_d2g_widget(133)
-        """ 
+        """
         import widget as widget #@UnresolvedImport
         #
         # get dust-to-gas ratio
@@ -593,7 +654,7 @@ class pydisk1D:
         d2g = self.get_sigma_dust_total()/self.sigma_g
         MX = d2g.max()
         #
-        # plot gas surface density at the given snapshot 'N' 
+        # plot gas surface density at the given snapshot 'N'
         #
         if (N+1>self.n_t):
             N=0;
@@ -602,19 +663,19 @@ class pydisk1D:
                            xlim=[self.x[0]/self.AU,self.x[-1]/self.AU],
                            ylim=[1e-6*MX,MX],xlabel='r[AU]',i_start=N,
                            ylabel=r'dust-to-gas')
-            
+
     def plot_sigma_g(self,N=0):
-        """ 
+        """
         Produces a plot of the gas surface density at snapshot number N.
         Nothing fancy yet.
         Arguments:
             N   index of the snapshot, defaults to first snapshot
         Example:
             >>> D.plot_sigma_g(133)
-        """ 
+        """
         from matplotlib.pyplot import loglog,title,xlabel,ylabel,ylim
         #
-        # plot gas surface density at the given snapshot 'N' 
+        # plot gas surface density at the given snapshot 'N'
         #
         if (N+1>self.sigma_g.shape[0]):
             N=0;
@@ -638,16 +699,16 @@ class pydisk1D:
         title('time = '+timestr+' yr')
 
     def plot_sigma_g_widget(self,N=0):
-        """ 
+        """
         Produces a plot of the gas surface density at snapshot number N.
         Arguments:
             N   index of the snapshot, defaults to first snapshot
         Example:
             >>> D.plot_sigma_g_widget(133)
-        """ 
+        """
         import widget as widget #@UnresolvedImport
         #
-        # plot gas surface density at the given snapshot 'N' 
+        # plot gas surface density at the given snapshot 'N'
         #
         if (N+1>self.sigma_g.shape[0]):
             N=0;
@@ -658,42 +719,42 @@ class pydisk1D:
                            ylabel='$\Sigma_g$ [g cm $^{-2}$]')
 
     def plot_sigma_widget(self,N=0,ispec=None,**kwargs):
-        """ 
+        """
         Produces a plot of the gas and total dust surface density at snapshot number N.
-        
+
         Keywords:
         ---------
-        
+
         N : int
         : index of the snapshot, defaults to first snapshot
-        
+
         ispec : index or array of indices or array of arrays of indices
         :   int:             plot only this surface density
             array of ints:   plot these surface densities
             array of arrays: sum up over every array each sum
-            
+
         **kwargs are passed to widget.plotter, some are set to default values if not given
-        
+
         Example:
         --------
         >>> D.plot_sigma_widget(133)
-        
+
         Reproduce plot from Andrews et al. 2014, ApJ
-        
+
         i0=abs(d.grainsizes-0.5e-4).argmin()
         i1=abs(d.grainsizes-5e-4).argmin()
         i2=abs(d.grainsizes-500e-4).argmin()
         i3=abs(d.grainsizes-5).argmin()
 
         d.plot_sigma_widget(N=244,ispec=[arange(i0,i1+1),arange(i2,i3+1)],ylim=[5e-4,4],xlim=[70,445],xlog=False,ylog=True,lstyle=['r-','g-','c-'])
-        """ 
+        """
         import widget
         #
-        # plot gas surface density at the given snapshot 'N' 
+        # plot gas surface density at the given snapshot 'N'
         #
         if (N+1>self.sigma_g.shape[0]):
             N=0;
-            
+
         if ispec is None:
             data2 = self.get_sigma_dust_total()
         if type(ispec) == int:
@@ -707,62 +768,62 @@ class pydisk1D:
                     data2 += [array([self.sigma_d[[j+it*self.n_m for j in i],:].sum(0) for it in range(self.n_t)])]
         #
         # set default values
-        # 
+        #
         if 'xlim'   not in kwargs.keys(): kwargs['xlim']   = [self.x[0]/self.AU,self.x[-1]/self.AU]
         if 'ylim'   not in kwargs.keys(): kwargs['ylim']   = [1e-4,1e4]
         if 'xlabel' not in kwargs.keys(): kwargs['xlabel'] = 'r[AU]'
         if 'ylabel' not in kwargs.keys(): kwargs['ylabel'] = '$\Sigma$ [g cm $^{-2}$]'
         if 'xlog'   not in kwargs.keys(): kwargs['xlog']   = 1
         if 'ylog'   not in kwargs.keys(): kwargs['ylog']   = 1
-            
+
         widget.plotter(x=self.x/self.AU,data=self.sigma_g,data2=data2,
                            times=self.timesteps/self.year,i_start=N,**kwargs)
 
     def plot_sigma_d_widget(self,N=0,sizelimits=False,stokesaxis=False,usefudgefactors=True,v_frag=None,fluxplot=False,zlim=None,**kwargs):
-        """ 
+        """
         Produces a plot of the 2D dust surface density at snapshot number N.
-        
+
         Keywords:
         ---------
-        
+
         N
         :    index of the snapshot, defaults to first snapshot
-        
+
         sizelimits
         :    wether or not to show the drift / fragmentation size limits
-        
+
         stokesaxis : bool
         :    if true, use stokes number instead of particle size on y-axis
 
         usefudgefactors : bool
         :    if true, use fudge factors from BKE2012
-        
+
         v_frag : None | float | array | function
         :    if V_FRAG for calculating the fragmentation barrier should not come from the nml-parameters, you can provide
            - a different float number
            - a 1D (r) array which is then the same for all snapshots
            - a 2D (r) array, which is then v_fr[t,r]
            - a function that takes the snapshot index as only argument and returns a 1D array
-           
+
         fluxplot : bool
         :   if True, plot dust flux surface density instead of dust surface density
-        
+
         zlim : 2 element array like
         :   z-axis limits
 
         **kwargs
         : will be passed forward to the widget
-        
+
         Example:
         --------
-        
+
             >>> D.plot_sigma_d_widget(200)
-        """ 
+        """
         import widget
         from uTILities import get_St, progress_bar
         from constants import M_earth
         from numpy import vstack, newaxis
-        
+
         i_start = N
         v_frag_in = v_frag
         if v_frag_in is None:
@@ -778,7 +839,7 @@ class pydisk1D:
                 v_frag = lambda N: v_frag_in[N]
             else:
                 raise ValueError('could not translate v_frag into a function, use float, 1D array, 2D array or function.')
-        
+
         if usefudgefactors:
             fudge_fr = 0.37
             fudge_dr = 0.55
@@ -787,7 +848,7 @@ class pydisk1D:
             fudge_dr = 1.
         #
         # calculate the stokes number if needed
-        # 
+        #
         if stokesaxis and self.stokesnumber is None:
             R,_ = meshgrid(self.x,self.grainsizes)
             Y   = zeros([self.n_t*self.n_m,self.n_r])
@@ -832,7 +893,7 @@ class pydisk1D:
                 #
                 b            = 3.*self.alpha[N]*cs**2/v_frag(N)**2
                 lim_fr[N,:]  = 0.5*(b-sqrt(b**2-4.))
- 
+
                 if stokesaxis:
                     #
                     # St = 1 as Stokes number
@@ -874,10 +935,10 @@ class pydisk1D:
                     #a_df[N,:]   = fudge_fr*2*self.sigma_g[N]/(RHO_S*pi)*v_frag(N)*sqrt(Grav*self.m_star[N]/self.x)/(abs(gamma)*cs**2*(1.-NN)) #@UnusedVariable
                     #if self.nml['STOKES_REGIME']==1:
                     #    St1 = minimum(St1,sqrt(9.*sqrt(2.*pi)/16.*mu*m_p*cs/(om*RHO_S*sig_h2)))
-                    
+
             add_arr += [lim_St1,lim_fr,lim_dr]
         #
-        # plot gas surface density at the given snapshot 'N' 
+        # plot gas surface density at the given snapshot 'N'
         #
         if (N+1>self.sigma_g.shape[0]):
             N=0;
@@ -911,52 +972,52 @@ class pydisk1D:
     def plot_sigma_d(self,N=-1,sizelimits=True,cmap=matplotlib.cm.get_cmap('hot'),fs=None,plot_style='c',xl=None,yl=None,xlog=True,ylog=True,clevel=None,ax_color='k',leg=True,bg_color='w',cb_color='w',fig=None,contour_lines=False,showtitle=True,colbar=True,time=None,base_level=None,lc=['r','r'],ls = ['-','--']):
         """
         Produces my default plot of the dust surface density.
-        
+
         N : integer
         : index of the snapshot, defaults to last snapshot
-        
+
         sizelimits : bool
         : wether or not to overplot the growth barriers
-        
+
         cmap : colormap
         : colormap to be used for the plot
 
         fs : int
         : font size
-        
+
         plot_style : str
         : 'c' for contourf, 's' for pcolor
-        
+
         xl : list
         : x limits
-        
+
         yl: list
         : y limits
 
         xlog : bool
         : log x axis
-        
+
         ylog : bool
         : log y axis
-        
+
         clevel : array or list
         : contour levels for the contour plot
-        
+
         ax_color : str
         : color of the fonts and axes
-        
+
         leg : bool
         : wether or not to print a legend for the size limits
-        
+
         bg_color : color
         : color to use as background
-        
+
         cb_color : color
         : color to use for the color bar axes and labels
-        
+
         fig : figure
         : into which figure to plot
-        
+
         contour_lines : bool
         : whether or not to print lines between the contour areas
 
@@ -965,16 +1026,16 @@ class pydisk1D:
 
         colbar : bool
             whether or not to show a colorbar
-            
+
         time : float
         : if not none, plot the snapshot at that time (or the closest one)
-        
+
         base_level : float|True|None
         :   add this value (if float) or the minimum color level (if ture) to the data to avoid white background
-        
+
         ls,lc : array
-        :   what styles/colors to use for the size limit lines 
-        
+        :   what styles/colors to use for the size limit lines
+
         Example:
             >>> D.plot_sigma_d(133)
 
@@ -1033,7 +1094,7 @@ class pydisk1D:
         # draw the data
         #
         if plot_style=='c':
-            cont=contourf(self.x/1.4e13,self.grainsizes,log10(base_level+ 
+            cont=contourf(self.x/1.4e13,self.grainsizes,log10(base_level+
               self.sigma_d[N*self.n_m+arange(0,self.n_m),:]/log(self.grainsizes[1]/self.grainsizes[0])),clevel,cmap=cmap,extend='both')
             cont.cmap.set_under('k')
             for p in cont.collections: p.set_edgecolor('face')
@@ -1114,19 +1175,19 @@ class pydisk1D:
         #
         if leg==True and sizelimits==True:
             leg=legend(lim_lines,lim_strings,loc='upper left')
-            for t in leg.get_texts(): t.set_color(cb_color) 
+            for t in leg.get_texts(): t.set_color(cb_color)
             leg.get_frame().set_color('None')
         #
         # back to previous settings
-        # 
+        #
         rcParams=params
 
     def read_diskev(self,data_dir="data/",skip_debug=True):
         """
         Reads in the simulation data from the given folder.
-   
+
         Arguments:
-            data_dir  direcdtory to read from 
+            data_dir  direcdtory to read from
         Example:
             >>> D.read_diskev('data_simulationname')
         """
@@ -1233,7 +1294,7 @@ class pydisk1D:
         Saves the data to a .hdf5 file.
 
         Arguments:
-            data_dir   filename to write to. Defaults to the 
+            data_dir   filename to write to. Defaults to the
             		   data_dir attribute or to "data" if data_dir is
             		   empty.
         Example:
@@ -1245,7 +1306,7 @@ class pydisk1D:
         if data_dir=="":
             data_dir=getattr(self,"data_dir","data")
         #
-        # open file for writing 
+        # open file for writing
         #
         filename = data_dir.replace('/','')+".hdf5"
         with h5py.File(filename,mode='w') as f:
@@ -1273,26 +1334,26 @@ class pydisk1D:
                 for key,val in self.nml.items():
                     grp.create_dataset(key, data=val)
         print(' ... Done!')
-        
+
     # -----------------------------------------------------------------------------
     def write_setup(self,it,overwrite=None):
         """
         This function writes out the setup files to continue a simulation from a given snapshot
-        
+
         Arguments:
         ----------
-        
+
         it
         :    snapshot index
-        
+
         Keyword:
         --------
-        
+
         overwrite = [*None* | bool]
             if true:    always overwrite
             if false:   never overwrite
             if None:    ask
-        
+
         Output:
         -------
         the namelist file and the other input files will be written out
@@ -1313,7 +1374,7 @@ class pydisk1D:
                     return
                 while inp not in ['','y','n']:
                     inp=input('\'%s\' already exists, overwrite [Y/n] '%dirname).lower()
-                    if inp=='n': 
+                    if inp=='n':
                         print('operation cancelled')
                         return
         else:
@@ -1352,8 +1413,8 @@ class pydisk1D:
         """
         This routine saves the snapshot to text files, which can then be
         read in by collaborators. The goal of this is to have a consistent
-        output for others, even if my model changes its own output (as it 
-        already does due to compiler differences). 
+        output for others, even if my model changes its own output (as it
+        already does due to compiler differences).
         """
         import shutil
         #
@@ -1391,7 +1452,7 @@ class pydisk1D:
         savetxt(out_dir+os.sep+'x.dat',         self.x)
         savetxt(out_dir+os.sep+'timesteps.dat', self.timesteps)
         write_nml(self.nml,out_dir+os.sep+'variables.nml',listname='inputvars')
-    
+
     # -----------------------------------------------------------------------------
     def str2num(self,st):
         """
@@ -1468,7 +1529,7 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
     """
     This file interpolate the distribution on a new grid. Will read all mat/hdf5
     files from the given input directory.
-    
+
     Arguments:
     J           = indices of the time array to be written-out
     directory   = where the mat/hdf5 files are. read them all.
@@ -1476,7 +1537,7 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
                   be written into this directory
     mask        = all files matching mask.mat and mask.hdf5 in
                   the specified directory will be read
-    
+
     e.g.:
     times = append(array([1,2,4,8])*1e5,arange(1,6)*1e6)
     J     = []
@@ -1486,7 +1547,7 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
     files=glob.glob(directory+os.sep+mask+'.mat')+glob.glob(directory+os.sep+mask+'.hdf5')
     if lucasgrids=='':
         lucasgrids=directory;
-        
+
     for filename in files:
         for j in J:
             filename = filename.replace('.mat','')
@@ -1495,7 +1556,7 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
             outputdir = directory+os.sep+'numberdensity_'+os.path.basename(filename).replace('data_','')
             if not os.path.isdir(outputdir):
                 os.makedirs(outputdir)
-            # 
+            #
             # now read in the data
             #
             d             = pydisk1D(filename)
@@ -1507,7 +1568,7 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
             T_in          = d.T
             timesteps_1   = d.timesteps
             grains        = len(grainsizes_in)
-            sig_in        = sigma_d_1[j*grains+arange(grains),:]/log(grainsizes_in[1]/grainsizes_in[0])            
+            sig_in        = sigma_d_1[j*grains+arange(grains),:]/log(grainsizes_in[1]/grainsizes_in[0])
             #
             # output
             #
@@ -1547,7 +1608,7 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
                     print('error at ir = %i'%ir)
                     sys.exit(2)
             #
-            # check normalization            
+            # check normalization
             #
             sig_out_total = array([sum(S*log(grainsizes_out[1]/grainsizes_out[0])) for S in sig_out.transpose()])
             m_out = trapz(2*pi*x_out**2*sig_out_total,x=log(x_out))
@@ -1568,12 +1629,12 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
             if any(N<0.0):
                 print('Error: negative number in N detected')
                 embed()
-            # 
+            #
             # write out the result in one column
             #
             s = '%0.2fMyr'%(timesteps_1[j]/(1e6*year))
             #
-            # file name 
+            # file name
             #
             outfile = outputdir+os.sep+'numberdensity_'+s+'_l.dat'
             if os.path.isfile(outfile):
@@ -1589,7 +1650,7 @@ def interpolate_for_luca(J,directory='.',lucasgrids='',mask='*'):
             #
             sig_out_total = array([sum(log(grainsizes_out[1]/grainsizes_out[0])*S) for S in sig_out.transpose()])
             savetxt(outputdir+os.sep+'sigma_d_total_'+s+'_l.dat',sig_out_total)
-            
+
             T_out = 10**interp(log10(x_out),log10(x_in),log10(T_in[j,:]))
             savetxt(outputdir+os.sep+'temperature_'+s+'_l.dat',T_out)
             sigg_out = 10**interp(log10(x_out),log10(x_in),log10(sigma_g_1[j,:]))
@@ -1601,7 +1662,7 @@ def pydisk1D_readall(mask='data*'):
     This script read in all the directories matching the mask and save them in the hdf5 format
     Arguments:
     mask    =  string to match for data directories, default ) 'data*'
-    
+
     Output:
     The data is saved locally as .hdf5 files
     """
@@ -1609,14 +1670,14 @@ def pydisk1D_readall(mask='data*'):
         if os.path.isdir(i):
             d=pydisk1D(i)
             d.save_diskev()
-    print("========")            
-    print("FINISHED")            
     print("========")
-                
+    print("FINISHED")
+    print("========")
+
 def setup_diskev(sim_name,R,T,sig_g,alpha,inputvars,sig_d=None,savedir='.',res=10):
     """
     This setup writes the input for a diskev simulation
-    
+
     Arguments:
     ----------
     sim_name:     the name of the simulation
@@ -1625,19 +1686,19 @@ def setup_diskev(sim_name,R,T,sig_g,alpha,inputvars,sig_d=None,savedir='.',res=1
     sig_g:        the gas surface density grid [g cm^-2]
     alpha:        the turbulence parameter array
     inputvars:    dictionary with the various parameters that should be set.
-    
+
     Keywords:
     ---------
     sig_d : array
         A dust surface density array, which will be written out along with
         the other setup files
-        
+
     savedir : string
         the name of the directory where the output is stored
-        
+
     res : float
         resolution of the mass grid, there are `res` bins per magnitude in mass
-    
+
     Output:
     -------
     The output arrays for alpha,t,sigma_g,x, and the input namelist are written
@@ -1732,7 +1793,7 @@ def setup_diskev(sim_name,R,T,sig_g,alpha,inputvars,sig_d=None,savedir='.',res=1
         for n,v in nml.items():
             if v==placeholder:
                 print('ERROR: %s needs to be set'%n)
-                sys.exit(1)            
+                sys.exit(1)
         #
         # remove growth limit
         #
@@ -1748,7 +1809,7 @@ def setup_diskev(sim_name,R,T,sig_g,alpha,inputvars,sig_d=None,savedir='.',res=1
         NAME += '_%i' % (NMBINS)
         #
         # save it.
-        # 
+        #
         write_nml(nml,savedir+os.sep+'input_'+NAME+'.nml', 'INPUTVARIABLES')
         #
         # write the grid and the surface density
