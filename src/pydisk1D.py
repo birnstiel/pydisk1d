@@ -482,10 +482,19 @@ class pydisk1D:
                     self.nml[key]=float(f[key][...])
         else:
             f = h5py.File(filename,'r')
-            if 'stored_data' in f.keys():
-                for varname in f['stored_data'][()]:
+            if 'stored_data' in f.attrs:
+                self.stored_data = list(f.attrs['stored_data'])
+                for varname in self.stored_data:
                     if type(varname)==bytes_: varname=varname.decode()
-                    setattr(self,varname,f[varname][()])
+                    if varname == 'stored_data':
+                        continue
+                    try:
+                        setattr(self,varname, f[varname][()])
+                    except:
+                        try:
+                            setattr(self,varname,f.attrs[varname][()])
+                        except:
+                            setattr(self,varname,f.attrs['data_dir'])
             else:
                 #
                 # all the try/except stuff is for reading in an file which lacks most of the variables
